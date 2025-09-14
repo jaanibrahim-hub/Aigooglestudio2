@@ -98,24 +98,44 @@ export function validateSession(sessionToken) {
         return false;
     }
 
-    // Check if session is not too old (24 hours)
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-    const age = Date.now() - session.created;
+    // Use activity-based expiration: 7 days of inactivity (much more generous)
+    const maxInactivity = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const inactiveTime = Date.now() - session.lastActivity;
     
-    return age < maxAge;
+    // Session is valid if it has been active within the last 7 days
+    if (inactiveTime < maxInactivity) {
+        // Update last activity to extend the session
+        session.lastActivity = Date.now();
+        sessionTokens.set(sessionToken, session);
+        
+        // Also update the API key storage last used time
+        storedData.lastUsed = Date.now();
+        apiKeyStorage.set(sessionToken, storedData);
+        
+        return true;
+    }
+    
+    return false;
 }
 
 /**
  * Cleans up expired sessions and API keys
  */
 export function cleanupExpiredSessions() {
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    // Clean up sessions that have been inactive for more than 7 days
+    const maxInactivity = 7 * 24 * 60 * 60 * 1000; // 7 days
+    // Also clean up sessions older than 30 days regardless of activity (absolute max)
+    const maxAbsoluteAge = 30 * 24 * 60 * 60 * 1000; // 30 days
     const now = Date.now();
     
     let cleanedCount = 0;
     
     for (const [token, session] of sessionTokens.entries()) {
-        if (now - session.created > maxAge) {
+        const inactiveTime = now - session.lastActivity;
+        const totalAge = now - session.created;
+        
+        // Remove if inactive for 7+ days OR older than 30 days total
+        if (inactiveTime > maxInactivity || totalAge > maxAbsoluteAge) {
             sessionTokens.delete(token);
             apiKeyStorage.delete(token);
             cleanedCount++;
@@ -123,7 +143,7 @@ export function cleanupExpiredSessions() {
     }
     
     if (cleanedCount > 0) {
-        console.log(`Cleaned up ${cleanedCount} expired sessions`);
+        console.log(`Cleaned up ${cleanedCount} expired sessions (inactive >7 days or >30 days old)`);
     }
 }
 
@@ -137,5 +157,5 @@ export function removeSession(sessionToken) {
     console.log(`Session removed: ${sessionToken.substring(0, 8)}...`);
 }
 
-// Run cleanup every hour
-setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+// Run cleanup every 6 hours (less aggressive)
+setInterval(cleanupExpiredSessions, 6 * 60 * 60 * 1000);

@@ -76,7 +76,7 @@ export async function initializeSession(apiKey: string): Promise<SessionData> {
 }
 
 /**
- * Check if session is valid
+ * Check if session is valid and automatically refresh if needed
  */
 export async function validateSession(): Promise<boolean> {
     if (!sessionToken) {
@@ -92,10 +92,49 @@ export async function validateSession(): Promise<boolean> {
         });
 
         const data = await response.json();
-        return data.valid === true;
+        const isValid = data.valid === true;
+        
+        // If valid, automatically refresh the session to extend it
+        if (isValid) {
+            try {
+                await refreshSession();
+            } catch (refreshError) {
+                console.warn('Session refresh failed, but session is still valid:', refreshError);
+            }
+        }
+        
+        return isValid;
     } catch (error) {
         console.error('Session validation error:', error);
         return false;
+    }
+}
+
+/**
+ * Refresh session to extend expiration
+ */
+export async function refreshSession(): Promise<void> {
+    if (!sessionToken) {
+        throw new Error('No active session to refresh');
+    }
+
+    try {
+        const response = await fetch(`${BACKEND_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: {
+                'X-Session-Token': sessionToken,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to refresh session');
+        }
+
+        console.log('✅ Session refreshed successfully');
+    } catch (error) {
+        console.error('Session refresh error:', error);
+        throw error;
     }
 }
 
