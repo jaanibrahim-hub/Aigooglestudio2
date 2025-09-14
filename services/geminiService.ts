@@ -84,7 +84,7 @@ const runReplicatePrediction = async (input: ReplicateInput, signal?: AbortSigna
         // Validate input before sending
         const validatedInput = {
             prompt: input.prompt.trim(),
-            image_input: input.image_input.filter(img => img && typeof img === 'string' && img.startsWith('data:image')),
+            image_input: input.image_input.filter(img => img && typeof img === 'string' && (img.startsWith('data:image') || img.startsWith('http'))),
             ...(input.output_format && { output_format: input.output_format })
         };
 

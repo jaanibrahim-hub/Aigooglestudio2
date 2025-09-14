@@ -399,8 +399,12 @@ const App: React.FC = () => {
       return;
     }
 
-    const baseImageForPoseChange = Object.values(currentLayer.poseImages)[0];
-    if (!baseImageForPoseChange) return;
+    // Use the most recent pose image, or fall back to displayImageUrl which has proper fallback logic
+    const baseImageForPoseChange = Object.values(currentLayer.poseImages)[0] || displayImageUrl;
+    if (!baseImageForPoseChange) {
+      updateState({ error: 'No base image available for pose generation. Please create a model first.' });
+      return;
+    }
 
     cleanupApiCall();
     abortControllerRef.current = new AbortController();
