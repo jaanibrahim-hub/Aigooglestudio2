@@ -18,7 +18,10 @@
     "tailwind-merge": "^2.4.0",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/engine": "^3.5.0",
-    "@tsparticles/slim": "^3.5.0"
+    "@tsparticles/slim": "^3.5.0",
+    "react-error-boundary": "^4.0.13",
+    "react-hot-toast": "^2.4.1",
+    "jszip": "3.10.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

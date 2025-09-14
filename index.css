@@ -6,7 +6,16 @@
 body {
   background-color: #fff; /* Light gray background */
   color: #2a2a2a; /* Dark text color */
+  transition-property: color, background-color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
 }
+
+html.dark body {
+  background-color: #030712;
+  color: #f9fafb;
+}
+
 
 /* Animation for gentle fade-in of components */
 @keyframes fade-in {
@@ -62,11 +71,23 @@ body {
   border-radius: 4px;
 }
 
+html.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 ::-webkit-scrollbar-thumb {
   background: #d1d5db; /* Light gray scrollbar */
   border-radius: 4px;
 }
 
+html.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563; /* Darker gray on hover */
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af; /* Darker gray on hover */
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* Darker gray on hover */
 }
