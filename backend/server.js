@@ -17,6 +17,7 @@ import replicateRoutes from './routes/replicate.js';
 import { 
     generalLimiter, 
     authLimiter, 
+    sessionLimiter,
     apiLimiter, 
     requestLogger, 
     errorHandler, 
@@ -69,7 +70,12 @@ app.get('/', (req, res) => {
 });
 
 // API routes with specific rate limiting
-app.use('/api/auth', authLimiter, authRoutes);
+// Apply strict rate limiting to login/logout, lenient to session operations
+app.use('/api/auth/init', authLimiter);
+app.use('/api/auth/logout', authLimiter);
+app.use('/api/auth/validate', sessionLimiter);
+app.use('/api/auth/refresh', sessionLimiter);
+app.use('/api/auth', authRoutes);
 app.use('/api/replicate', apiLimiter, replicateRoutes);
 
 // 404 handler

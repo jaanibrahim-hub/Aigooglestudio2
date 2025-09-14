@@ -20,14 +20,29 @@ export const generalLimiter = rateLimit({
 });
 
 /**
- * Strict rate limiting for authentication endpoints
+ * Strict rate limiting for login/logout endpoints
  */
 export const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // limit each IP to 10 auth requests per windowMs
+    max: 20, // limit each IP to 20 auth requests per windowMs
     message: {
         error: 'Too many authentication attempts',
         message: 'Please try again in 15 minutes'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+/**
+ * Very lenient rate limiting for session validation and refresh
+ * Allows for frequent validation during active use
+ */
+export const sessionLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 200, // limit each IP to 200 session requests per minute (very generous)
+    message: {
+        error: 'Too many session requests',
+        message: 'Please slow down session validation'
     },
     standardHeaders: true,
     legacyHeaders: false

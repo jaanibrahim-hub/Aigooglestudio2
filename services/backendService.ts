@@ -91,6 +91,12 @@ export async function validateSession(): Promise<boolean> {
             },
         });
 
+        if (response.status === 429) {
+            // Rate limited - but this doesn't mean session is invalid
+            console.warn('Session validation rate limited - assuming session is still valid');
+            return true; // Assume session is valid if we're just rate limited
+        }
+
         const data = await response.json();
         const isValid = data.valid === true;
         
@@ -156,6 +162,10 @@ export async function createPrediction(predictionData: PredictionRequest): Promi
             body: JSON.stringify(predictionData),
         });
 
+        if (response.status === 429) {
+            throw new Error('Server is busy, please wait a moment and try again');
+        }
+
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || `HTTP ${response.status}: Failed to create prediction`);
@@ -183,6 +193,10 @@ export async function getPredictionStatus(predictionId: string): Promise<Predict
                 'X-Session-Token': sessionToken,
             },
         });
+
+        if (response.status === 429) {
+            throw new Error('Server is busy, please wait a moment and try again');
+        }
 
         if (!response.ok) {
             const errorData = await response.json();
