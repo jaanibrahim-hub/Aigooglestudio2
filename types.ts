@@ -3,13 +3,27 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-export type ItemCategory = 'top' | 'bottom' | 'shoes' | 'accessory' | 'held';
+export type ItemCategory = 
+  | 'top' 
+  | 'bottom' 
+  | 'shoes' 
+  | 'face' 
+  | 'hair' 
+  | 'jewelry' 
+  | 'eyewear' 
+  | 'bags' 
+  | 'watches' 
+  | 'accessories' 
+  | 'held';
+
+export type ModelType = 'man' | 'woman' | 'kid';
 
 export interface WardrobeItem {
   id: string;
   name: string;
   url: string;
   category: ItemCategory;
+  isPermanent?: boolean; // Preloaded items that can't be deleted
 }
 
 export interface OutfitLayer {
@@ -43,4 +57,5 @@ export interface AppState {
   retryCount: number;
   theme: 'light' | 'dark';
   isGalleryOpen: boolean;
+  selectedModelType: ModelType;
 }

@@ -12,15 +12,24 @@ import toast, { Toaster } from 'react-hot-toast';
 // Lazy load components for better performance
 const StartScreen = lazy(() => import('./components/StartScreen'));
 const Canvas = lazy(() => import('./components/Canvas'));
-const WardrobePanel = lazy(() => import('./components/WardrobeModal'));
+// WardrobePanel removed - using LayeredOutfitBuilder instead
 const OutfitStack = lazy(() => import('./components/OutfitStack'));
 const IndustryPoseSelector = lazy(() => import('./components/IndustryPoseSelector').then(m => ({ default: m.IndustryPoseSelector })));
 const GalleryModal = lazy(() => import('./components/GalleryModal'));
 const GeneratedImagesTray = lazy(() => import('./components/GeneratedImagesTray'));
+const LayeredOutfitBuilder = lazy(() => import('./components/LayeredOutfitBuilder'));
 
 
-import { generateVirtualTryOnImage, generateOutfitModification, generatePoseVariation, generateModelImage } from './services/geminiService';
-import { OutfitLayer, WardrobeItem, AppState, PoseGenerationCache, GalleryImage } from './types';
+import { 
+  generateVirtualTryOnImage, 
+  generateOutfitModification, 
+  generatePoseVariation, 
+  generateModelImage, 
+  generateLayeredOutfit,
+  generateEnhancedOutfitModification,
+  addGarmentToOutfit 
+} from './services/geminiService';
+import { OutfitLayer, WardrobeItem, AppState, PoseGenerationCache, GalleryImage, ModelType } from './types';
 import { ChevronDownIcon, ChevronUpIcon, RefreshIcon } from './components/icons';
 import { defaultWardrobe } from './wardrobe';
 import Footer from './components/Footer';
@@ -95,6 +104,7 @@ const useAppState = () => {
       retryCount: 0,
       theme: initialTheme,
       isGalleryOpen: false,
+      selectedModelType: 'woman', // Default to woman
     };
   });
 
@@ -129,7 +139,7 @@ const ErrorFallback: React.FC<{ error: Error; resetErrorBoundary: () => void }> 
   error, 
   resetErrorBoundary 
 }) => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
+  <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 pl-20">
     <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 text-center">
       <div className="text-red-500 text-6xl mb-4">⚠️</div>
       <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Something went wrong</h2>
@@ -325,10 +335,9 @@ const App: React.FC = () => {
     try {
       const isFirstGarment = state.outfitHistory.length <= 1;
 
-      // Use the simple try-on for the first garment, and the modification for subsequent items.
-      const newImageUrl = isFirstGarment
-        ? await generateVirtualTryOnImage(displayImageUrl, garmentFile, { signal: abortControllerRef.current.signal })
-        : await generateOutfitModification(displayImageUrl, garmentFile, garmentInfo, { signal: abortControllerRef.current.signal });
+      // Use enhanced outfit modification for ALL categories including Face/Hair
+      // This ensures proper category-specific prompting for face swapping, hair changes, etc.
+      const newImageUrl = await generateEnhancedOutfitModification(displayImageUrl, garmentFile, garmentInfo, state.selectedModelType, { signal: abortControllerRef.current.signal });
 
       const currentPoseInstruction = POSE_INSTRUCTIONS[0]; // Always default to first pose for a new garment
       const newLayer: OutfitLayer = { 
@@ -463,6 +472,92 @@ const App: React.FC = () => {
     }
   }, [updateState]);
 
+  // --- NEW HANDLERS FOR ENHANCED FEATURES ---
+
+  const handleUpdateWardrobe = useCallback((items: WardrobeItem[]) => {
+    updateState({ wardrobe: items });
+  }, [updateState]);
+
+  const handleDeleteItem = useCallback((itemId: string) => {
+    const updatedWardrobe = state.wardrobe.filter(item => item.id !== itemId);
+    updateState({ wardrobe: updatedWardrobe });
+    toast.success('Item deleted', { duration: 2000 });
+  }, [state.wardrobe, updateState]);
+
+  const handleModelTypeChange = useCallback((modelType: ModelType) => {
+    updateState({ selectedModelType: modelType });
+    toast.success(`Model type changed to ${modelType}`, { duration: 2000 });
+  }, [updateState]);
+
+  const handleLayeredOutfitGenerate = useCallback(async (selectedItems: WardrobeItem[], modelType: ModelType) => {
+    if (!displayImageUrl || state.isLoading || selectedItems.length === 0) return;
+
+    cleanupApiCall();
+    abortControllerRef.current = new AbortController();
+
+    const itemNames = selectedItems.map(item => item.name).join(', ');
+    
+    updateState({
+      error: null,
+      isLoading: true,
+      loadingMessage: `Creating layered outfit with ${selectedItems.length} items: ${itemNames}`,
+      retryCount: 0
+    });
+
+    try {
+      const newImageUrl = await generateLayeredOutfit(
+        displayImageUrl,
+        selectedItems,
+        modelType,
+        { signal: abortControllerRef.current.signal }
+      );
+
+      const currentPoseInstruction = POSE_INSTRUCTIONS[0];
+      const newLayer: OutfitLayer = { 
+        garment: {
+          id: `layered-${Date.now()}`,
+          name: `Layered Outfit (${selectedItems.length} items)`,
+          url: newImageUrl,
+          category: 'top', // Use 'top' as the primary category for layered outfits
+        }, 
+        poseImages: { [currentPoseInstruction]: newImageUrl } 
+      };
+
+      const newCache = new Map(state.poseCache);
+      newCache.set(`${state.currentOutfitIndex + 1}-${currentPoseInstruction}`, newImageUrl);
+
+      // Add any new custom items to wardrobe
+      const newWardrobeItems = selectedItems.filter(item => 
+        !state.wardrobe.some(existing => existing.id === item.id)
+      );
+
+      updateState({
+        outfitHistory: [...state.outfitHistory.slice(0, state.currentOutfitIndex + 1), newLayer],
+        currentOutfitIndex: state.currentOutfitIndex + 1,
+        currentPoseIndex: 0,
+        wardrobe: newWardrobeItems.length > 0 
+          ? [...state.wardrobe, ...newWardrobeItems]
+          : state.wardrobe,
+        poseCache: newCache,
+        isLoading: false,
+        loadingMessage: ''
+      });
+
+      handleSuccess(`Layered outfit created with ${selectedItems.length} items!`);
+      imagePreloaderRef.current.preload([newImageUrl]);
+
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        handleError(error, 'Failed to create layered outfit');
+      }
+    } finally {
+      abortControllerRef.current = null;
+    }
+  }, [
+    displayImageUrl, state.isLoading, state.outfitHistory, state.currentOutfitIndex,
+    state.wardrobe, state.poseCache, updateState, handleError, handleSuccess, cleanupApiCall
+  ]);
+
   const handleRetry = useCallback(() => {
     if (state.retryCount < 3) {
       updateState({ 
@@ -541,7 +636,7 @@ const App: React.FC = () => {
           {!state.modelImageUrl ? (
             <motion.div
               key="start-screen"
-              className="w-screen min-h-screen flex items-start sm:items-center justify-center bg-gray-50 dark:bg-black p-4 pb-20"
+              className="w-screen min-h-screen flex items-start sm:items-center justify-center bg-gray-50 dark:bg-black p-4 pb-20 pl-20"
               variants={viewVariants}
               initial="initial"
               animate="animate"
@@ -555,7 +650,7 @@ const App: React.FC = () => {
           ) : (
             <motion.div
               key="main-app"
-              className="relative flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden"
+              className="relative flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden pl-16"
               variants={viewVariants}
               initial="initial"
               animate="animate"
@@ -629,8 +724,19 @@ const App: React.FC = () => {
                       </Suspense>
                     </div>
                     
-                    <Suspense fallback={<LoadingFallback />}>
-                      <WardrobePanel onGarmentSelect={handleGarmentSelect} activeGarmentIds={activeGarmentIds} isLoading={state.isLoading} wardrobe={state.wardrobe} />
+                    {/* Complete Wardrobe & Outfit Builder */}
+                    <Suspense fallback={<LoadingFallback message="Loading Layered Builder..." />}>
+                      <LayeredOutfitBuilder
+                        wardrobe={state.wardrobe}
+                        selectedModelType={state.selectedModelType}
+                        onGenerateLayeredOutfit={handleLayeredOutfitGenerate}
+                        onUpdateWardrobe={handleUpdateWardrobe}
+                        onDeleteItem={handleDeleteItem}
+                        onModelTypeChange={handleModelTypeChange}
+                        onGarmentSelect={handleGarmentSelect}
+                        activeGarmentIds={activeGarmentIds}
+                        isLoading={state.isLoading}
+                      />
                     </Suspense>
                   </div>
                 </aside>

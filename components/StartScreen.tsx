@@ -340,8 +340,8 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
           </div>
           <div className="w-full lg:w-1/2 flex flex-col items-center justify-center">
             <Compare
-              firstImage="https://storage.googleapis.com/gemini-95-icons/asr-tryon.jpg"
-              secondImage="https://storage.googleapis.com/gemini-95-icons/asr-tryon-model.png"
+              firstImage="https://page.gensparksite.com/v1/base64_upload/c4afa360407f1e2cf182709cfe497ef1"
+              secondImage="https://page.gensparksite.com/v1/base64_upload/302c7e06837728200008043f90cc08ca"
               slideMode="drag"
               className="w-full max-w-sm aspect-[2/3] rounded-2xl bg-gray-200 dark:bg-gray-800"
             />
