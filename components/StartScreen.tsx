@@ -7,7 +7,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloudIcon } from './icons';
 import { Compare } from './ui/compare';
-import { generateModelImage } from '../services/geminiService';
+import { generateModelImage, initializeSecureSession, hasValidSession } from '../services/geminiService';
 import Spinner from './Spinner';
 import { getFriendlyErrorMessage, compressImage } from '../lib/utils';
 
@@ -54,10 +54,17 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
   const [generationProgress, setGenerationProgress] = useState(0);
 
   useEffect(() => {
+    // Check if user has an active secure session
+    if (hasValidSession()) {
+      setIsKeySubmitted(true);
+      return;
+    }
+
+    // Check for old API key to migrate
     const savedKey = localStorage.getItem('replicate_api_key');
     if (savedKey) {
       setReplicateKey(savedKey);
-      setIsKeySubmitted(true);
+      // Don't auto-submit, let user migrate manually for security
     }
   }, []);
 
@@ -76,7 +83,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
     }
   }, [isGenerating]);
 
-  const handleKeySave = () => {
+  const handleKeySave = async () => {
     const trimmedKey = replicateKey.trim();
     if (!trimmedKey) {
         setError('Please enter a valid Replicate API Key.');
@@ -88,13 +95,32 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
         return;
     }
 
-    localStorage.setItem('replicate_api_key', trimmedKey);
-    setIsKeySubmitted(true);
+    setIsGenerating(true);
     setError(null);
+
+    try {
+      // Initialize secure session with encrypted API key storage
+      await initializeSecureSession(trimmedKey);
+      
+      // Clear the input field for security
+      setReplicateKey('');
+      setIsKeySubmitted(true);
+      
+      console.log('✅ Secure session initialized successfully');
+    } catch (err: any) {
+      console.error('❌ Failed to initialize secure session:', err);
+      setError(getFriendlyErrorMessage(err, 'Failed to initialize secure session'));
+    } finally {
+      setIsGenerating(false);
+    }
   };
   
-  const handleClearKey = () => {
-      localStorage.removeItem('replicate_api_key');
+  const handleClearKey = async () => {
+      // Import logout function dynamically to clear secure session
+      const { logout } = await import('../services/backendService');
+      await logout();
+      
+      localStorage.removeItem('replicate_api_key'); // Clean up old key
       setReplicateKey('');
       setIsKeySubmitted(false);
       reset();
@@ -203,7 +229,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
               API Key Required
             </h1>
             <p className="mt-3 text-gray-600 dark:text-gray-400">
-              This app uses the Replicate API to generate images. Please enter your API key to continue. You can get one from the{' '}
+              This app uses the Replicate API to generate images. Your API key will be encrypted and stored securely on our backend. You can get one from the{' '}
               <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
                 Replicate website
               </a>.
@@ -222,9 +248,17 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
             </div>
             <button 
               onClick={handleKeySave} 
-              className="mt-6 w-full relative flex items-center justify-center px-8 py-3 text-base font-semibold text-white bg-gray-900 rounded-md cursor-pointer group hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200 transition-colors"
+              disabled={isGenerating}
+              className="mt-6 w-full relative flex items-center justify-center px-8 py-3 text-base font-semibold text-white bg-gray-900 rounded-md cursor-pointer group hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save and Continue
+              {isGenerating ? (
+                <>
+                  <Spinner className="w-4 h-4 mr-2" />
+                  Securing API Key...
+                </>
+              ) : (
+                'Encrypt & Continue'
+              )}
             </button>
             {error && <p className="text-red-500 dark:text-red-400 text-sm mt-4" role="alert">{error}</p>}
         </motion.div>

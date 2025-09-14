@@ -3,6 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import { WardrobeItem } from "../types";
+import { 
+    initializeSession, 
+    validateSession, 
+    createPrediction, 
+    pollForCompletion, 
+    hasActiveSession 
+} from "./backendService";
 
 // --- Configuration ---
 const NANO_BANANA_CONFIG = {
@@ -11,15 +18,6 @@ const NANO_BANANA_CONFIG = {
     supportedFormats: ['jpg', 'png', 'webp'],
     maxFileSize: 10 * 1024 * 1024, // 10MB
 };
-
-// A list of reliable CORS proxies to try in order.
-const CORS_PROXIES = [
-  'https://corsproxy.io/?',
-  'https://proxy.cors.sh/', // Keep the old one as a fallback
-];
-const REPLICATE_API_ENDPOINT = "https://api.replicate.com/v1/predictions";
-const POLLING_INTERVAL_MS = 2500; // Poll every 2.5 seconds
-const SYNC_WAIT_TIMEOUT = 60; // Wait up to 60 seconds for a synchronous response
 
 // --- Interfaces & Options ---
 interface GenerationOptions {
@@ -42,39 +40,6 @@ class ApiError extends Error {
 }
 
 // --- Utility Functions ---
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const fetchWithTimeout = (resource: RequestInfo | URL, options: RequestInit, timeout: number = 45000): Promise<Response> => {
-    return new Promise(async (resolve, reject) => {
-        const controller = new AbortController();
-        const { signal: externalSignal } = options;
-
-        const timeoutId = setTimeout(() => {
-            controller.abort(new DOMException('The request timed out.', 'TimeoutError'));
-        }, timeout);
-
-        const onExternalAbort = () => {
-            controller.abort(externalSignal?.reason);
-        };
-
-        externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
-
-        try {
-            const response = await fetch(resource, {
-                ...options,
-                signal: controller.signal,
-            });
-            resolve(response);
-        } catch (error) {
-            reject(error);
-        } finally {
-            clearTimeout(timeoutId);
-            externalSignal?.removeEventListener('abort', onExternalAbort);
-        }
-    });
-};
-
-
 const fileToDataUrl = (file: File): Promise<string> => {
     if (!file || !file.type.startsWith('image/')) {
         return Promise.reject(new ApiError('Invalid file type. Please use a PNG, JPEG, or WEBP image.'));
@@ -88,101 +53,57 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
+/**
+ * Ensure user has a valid session with encrypted API key
+ */
+const ensureValidSession = async (): Promise<void> => {
+    if (!hasActiveSession()) {
+        // Check if user has old replicate key in localStorage
+        const oldApiKey = localStorage.getItem('replicate_api_key');
+        if (oldApiKey) {
+            console.log('Migrating to secure backend session...');
+            await initializeSession(oldApiKey);
+            return;
+        }
+        throw new ApiError('No active session. Please set your Replicate API key.');
+    }
+
+    // Validate existing session
+    const isValid = await validateSession();
+    if (!isValid) {
+        throw new ApiError('Session expired. Please refresh the page and re-enter your API key.');
+    }
+};
+
 // --- Core API Logic ---
 const runReplicatePrediction = async (input: ReplicateInput, signal?: AbortSignal): Promise<string> => {
-    const apiKey = localStorage.getItem('replicate_api_key');
-    if (!apiKey) {
-        throw new ApiError('Replicate API Key not found. Please set it on the start screen.');
-    }
+    try {
+        // Ensure valid session before making API calls
+        await ensureValidSession();
 
-    // Validate input before sending
-    const validatedInput = {
-        prompt: input.prompt.trim(),
-        image_input: input.image_input.filter(img => img && typeof img === 'string' && img.startsWith('data:image')),
-        ...(input.output_format && { output_format: input.output_format })
-    };
+        // Validate input before sending
+        const validatedInput = {
+            prompt: input.prompt.trim(),
+            image_input: input.image_input.filter(img => img && typeof img === 'string' && img.startsWith('data:image')),
+            ...(input.output_format && { output_format: input.output_format })
+        };
 
-    if (validatedInput.image_input.length === 0) {
-        throw new ApiError('No valid input images provided for the prediction.');
-    }
+        if (validatedInput.image_input.length === 0) {
+            throw new ApiError('No valid input images provided for the prediction.');
+        }
 
-    let lastError: Error | null = null;
-    
-    for (const proxy of CORS_PROXIES) {
-        const startTime = performance.now();
-        try {
-            console.log(`Attempting prediction with proxy: ${proxy}`);
-            const endpoint = `${proxy}${REPLICATE_API_ENDPOINT}`;
+        console.log('Creating prediction through secure backend...');
+        
+        // Create prediction through our secure backend
+        const prediction = await createPrediction({
+            version: NANO_BANANA_CONFIG.version,
+            input: validatedInput
+        });
 
-            // 1. Create Prediction, preferring a synchronous response with a timeout.
-            const createResponse = await fetchWithTimeout(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Token ${apiKey}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': `wait=${SYNC_WAIT_TIMEOUT}`,
-                    'X-Requested-With': 'XMLHttpRequest', // For better proxy compatibility
-                },
-                body: JSON.stringify({
-                    version: NANO_BANANA_CONFIG.version,
-                    input: validatedInput,
-                }),
-                signal,
-            }, SYNC_WAIT_TIMEOUT * 1000 + 10000); // Wait 10s longer than the sync timeout
-            
-            if (signal?.aborted) throw new ApiError('Operation was cancelled.');
+        console.log(`Prediction created: ${prediction.id}, status: ${prediction.status}`);
 
-            if (!createResponse.ok) {
-                let errorMessage = `API Error (${createResponse.status})`;
-                try {
-                    const errorBody = await createResponse.json();
-                    errorMessage = errorBody.detail || JSON.stringify(errorBody);
-                } catch (e) {
-                    try {
-                        const errorText = await createResponse.text();
-                        errorMessage = errorText || errorMessage;
-                    } catch (e2) { /* ignore secondary error */ }
-                }
-                console.error('Replicate API Error Response:', errorMessage);
-                throw new ApiError(errorMessage);
-            }
-
-            let prediction = await createResponse.json();
-
-            // 2. Poll for the result if the prediction didn't complete synchronously.
-            if (createResponse.status === 201 || createResponse.status === 202) {
-                const getUrl = prediction.urls?.get;
-                if (!getUrl) {
-                    throw new ApiError('Polling URL not found in API response.');
-                }
-                
-                const pollingUrl = `${proxy}${getUrl}`; // Important: Poll through the same proxy
-                
-                while (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-                    if (signal?.aborted) throw new ApiError('Operation was cancelled.');
-                    await sleep(POLLING_INTERVAL_MS);
-                    
-                    const getResponse = await fetchWithTimeout(pollingUrl, {
-                        headers: { 'Authorization': `Token ${apiKey}` },
-                        signal,
-                    }, 15000); // 15 second timeout for polling requests
-
-                    if (getResponse.ok) {
-                      prediction = await getResponse.json();
-                    } else {
-                      console.warn(`Polling failed with status ${getResponse.status}, continuing poll.`);
-                    }
-                }
-            }
-
-            // 3. Process the final result.
-            if (prediction.status === 'failed') {
-                throw new ApiError(`Image generation failed: ${prediction.error}`);
-            }
-            if (prediction.status !== 'succeeded') {
-                throw new ApiError(`Prediction finished with unexpected status: ${prediction.status}`);
-            }
-            
+        // If prediction completed immediately, return result
+        if (prediction.status === 'succeeded' && prediction.output) {
             const output = prediction.output;
             let resultUrl: string | undefined;
 
@@ -193,25 +114,87 @@ const runReplicatePrediction = async (input: ReplicateInput, signal?: AbortSigna
             }
 
             if (resultUrl) {
-                const endTime = performance.now();
-                console.log(`✅ Request succeeded via ${proxy} in ${(endTime - startTime).toFixed(0)}ms`);
+                console.log('✅ Prediction completed immediately');
                 return resultUrl;
             }
-
-            throw new ApiError('Prediction succeeded but a valid image URL was not returned.');
-
-        } catch (error: any) {
-            const endTime = performance.now();
-            if (signal?.aborted) {
-                console.warn(`❌ Request cancelled by user via ${proxy} after ${(endTime - startTime).toFixed(0)}ms.`);
-                throw new ApiError('Operation was cancelled.');
-            }
-            console.warn(`❌ Proxy ${proxy} failed in ${(endTime - startTime).toFixed(0)}ms: ${error.message}. Trying next proxy...`);
-            lastError = error;
         }
-    }
 
-    throw lastError || new ApiError('All CORS proxies failed. Please check your network connection.');
+        // Poll for completion through backend
+        console.log('Polling for prediction completion...');
+        const completedPrediction = await pollForCompletion(
+            prediction.id,
+            (pred) => {
+                console.log(`Prediction ${pred.id} status: ${pred.status}`);
+                
+                // Check for abort signal during polling
+                if (signal?.aborted) {
+                    throw new ApiError('Operation was cancelled.');
+                }
+            }
+        );
+
+        // Process the final result
+        if (completedPrediction.status === 'failed') {
+            throw new ApiError(`Image generation failed: ${completedPrediction.error || 'Unknown error'}`);
+        }
+
+        if (completedPrediction.status !== 'succeeded') {
+            throw new ApiError(`Prediction finished with unexpected status: ${completedPrediction.status}`);
+        }
+        
+        const output = completedPrediction.output;
+        let resultUrl: string | undefined;
+
+        if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
+            resultUrl = output[0];
+        } else if (typeof output === 'string') {
+            resultUrl = output;
+        }
+
+        if (resultUrl) {
+            console.log('✅ Prediction completed successfully');
+            return resultUrl;
+        }
+
+        throw new ApiError('Prediction succeeded but a valid image URL was not returned.');
+
+    } catch (error: any) {
+        if (signal?.aborted) {
+            console.warn('❌ Request cancelled by user');
+            throw new ApiError('Operation was cancelled.');
+        }
+        
+        console.error('❌ Prediction failed:', error.message);
+        
+        // Re-throw as ApiError for consistent error handling
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        
+        throw new ApiError(`Image generation failed: ${error.message || 'Unknown error'}`);
+    }
+};
+
+// --- Session Management Functions ---
+
+/**
+ * Initialize secure session with API key (replaces direct localStorage access)
+ */
+export const initializeSecureSession = async (apiKey: string): Promise<void> => {
+    try {
+        await initializeSession(apiKey);
+        console.log('✅ Secure session initialized successfully');
+    } catch (error) {
+        console.error('❌ Failed to initialize secure session:', error);
+        throw new ApiError(`Failed to initialize secure session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+};
+
+/**
+ * Check if user has an active secure session
+ */
+export const hasValidSession = (): boolean => {
+    return hasActiveSession();
 };
 
 // --- Exported Service Functions ---
