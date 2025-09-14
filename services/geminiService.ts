@@ -205,7 +205,7 @@ export const generateModelImage = async (userImage: File, options: GenerationOpt
         ? 'a clean, pure black (#000000) studio background'
         : 'a clean, light gray (#f0f0f0) studio background';
 
-    const prompt = `Edit the person in this image to appear as a professional fashion model. Replace the background with ${backgroundInstruction}. Maintain the person's identity, facial features, and body proportions while enhancing the overall professional appearance.`;
+    const prompt = `You are an expert fashion photographer AI. Transform the person in this image into a full-body fashion model photo suitable for an e-commerce website. The background must be ${backgroundInstruction}. The person should have a neutral, professional model expression. Preserve the person's identity, unique features, and body type, but place them in a standard, relaxed standing model pose. The final image must be photorealistic. Return ONLY the final image.`;
 
     const input: ReplicateInput = {
         prompt,
