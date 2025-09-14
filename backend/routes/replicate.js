@@ -51,21 +51,37 @@ const validateApiKey = (req, res, next) => {
  */
 router.post('/predictions', validateApiKey, async (req, res) => {
     try {
-        const { version, input } = req.body;
+        const { model, version, input } = req.body;
 
-        if (!version || !input) {
+        if (!input) {
             return res.status(400).json({
                 error: 'Missing required fields',
-                message: 'Both version and input are required'
+                message: 'Input is required'
             });
         }
 
-        console.log('Creating prediction for version:', version);
+        // Determine the correct endpoint
+        let endpoint;
+        let requestBody;
 
-        const response = await axios.post(`${REPLICATE_API_BASE}/predictions`, {
-            version,
-            input
-        }, {
+        if (model) {
+            // Use model path (e.g., "google/nano-banana")
+            endpoint = `${REPLICATE_API_BASE}/models/${model}/predictions`;
+            requestBody = { input };
+            console.log('Creating prediction for model:', model);
+        } else if (version) {
+            // Use version ID (legacy format)
+            endpoint = `${REPLICATE_API_BASE}/predictions`;
+            requestBody = { version, input };
+            console.log('Creating prediction for version:', version);
+        } else {
+            return res.status(400).json({
+                error: 'Missing required fields',
+                message: 'Either model or version is required'
+            });
+        }
+
+        const response = await axios.post(endpoint, requestBody, {
             headers: {
                 'Authorization': `Token ${req.replicateApiKey}`,
                 'Content-Type': 'application/json',

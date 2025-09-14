@@ -22,7 +22,8 @@ interface SessionData {
 }
 
 interface PredictionRequest {
-    version: string;
+    model?: string;
+    version?: string;
     input: Record<string, any>;
 }
 

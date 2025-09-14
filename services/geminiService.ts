@@ -13,7 +13,7 @@ import {
 
 // --- Configuration ---
 const NANO_BANANA_CONFIG = {
-    version: "d71389e6c46a69163f523f2f53a80f0120eea866ad5082a0b16f27b523e42531",
+    model: "google/nano-banana", // Use model path instead of version
     maxImages: 4,
     supportedFormats: ['jpg', 'png', 'webp'],
     maxFileSize: 10 * 1024 * 1024, // 10MB
@@ -96,7 +96,7 @@ const runReplicatePrediction = async (input: ReplicateInput, signal?: AbortSigna
         
         // Create prediction through our secure backend
         const prediction = await createPrediction({
-            version: NANO_BANANA_CONFIG.version,
+            model: NANO_BANANA_CONFIG.model,
             input: validatedInput
         });
 
