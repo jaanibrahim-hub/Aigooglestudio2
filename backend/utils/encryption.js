@@ -6,7 +6,9 @@
 import crypto from 'crypto';
 
 // Generate a secure encryption key - in production, this should be from environment variables
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32); // 32 bytes key for AES-256
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY ? 
+    Buffer.from(process.env.ENCRYPTION_KEY, 'hex') : 
+    crypto.randomBytes(32); // 32 bytes key for AES-256
 const ALGORITHM = 'aes-256-gcm';
 
 /**
@@ -17,7 +19,7 @@ const ALGORITHM = 'aes-256-gcm';
 export function encrypt(text) {
     try {
         const iv = crypto.randomBytes(16); // Initialization vector
-        const cipher = crypto.createCipher(ALGORITHM, ENCRYPTION_KEY);
+        const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
         
         let encrypted = cipher.update(text, 'utf8', 'hex');
         encrypted += cipher.final('hex');
@@ -43,7 +45,7 @@ export function encrypt(text) {
 export function decrypt(encryptedData) {
     try {
         const { encrypted, iv, authTag } = encryptedData;
-        const decipher = crypto.createDecipher(ALGORITHM, ENCRYPTION_KEY);
+        const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, Buffer.from(iv, 'hex'));
         
         decipher.setAuthTag(Buffer.from(authTag, 'hex'));
         
