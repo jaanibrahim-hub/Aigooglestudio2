@@ -4,7 +4,7 @@
  */
 
 // Backend API configuration
-const BACKEND_BASE_URL = 'https://5000-i39kfzrghbubkmyjd0sc1-6532622b.e2b.dev/api';
+const BACKEND_BASE_URL = 'https://5001-i39kfzrghbubkmyjd0sc1-6532622b.e2b.dev/api';
 
 // Session management
 let sessionToken: string | null = localStorage.getItem('session_token');
