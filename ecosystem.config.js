@@ -1,13 +1,11 @@
-export default {
+module.exports = {
   apps: [{
     name: 'fit-check-app',
-    script: 'npm',
-    args: 'run dev',
+    script: 'npx',
+    args: 'vite dev --host 0.0.0.0 --port 3000',
     cwd: '/home/user/webapp',
     env: {
-      NODE_ENV: 'development',
-      HOST: '0.0.0.0',
-      PORT: 3000
+      NODE_ENV: 'development'
     },
     watch: false,
     instances: 1,

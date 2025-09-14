@@ -50,13 +50,14 @@ export const sessionLimiter = rateLimit({
 
 /**
  * Rate limiting for Replicate API calls
+ * Conservative limit to stay well below Replicate's 600/min for predictions
  */
 export const apiLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: 20, // limit each IP to 20 API calls per minute
+    max: 100, // limit each IP to 100 API calls per minute (well below Replicate's 600/min)
     message: {
         error: 'Too many API requests',
-        message: 'Please slow down your requests'
+        message: 'Please slow down your requests to prevent hitting Replicate rate limits'
     },
     standardHeaders: true,
     legacyHeaders: false

@@ -7,6 +7,38 @@ import express from 'express';
 import axios from 'axios';
 import { getApiKey, validateSession } from '../utils/apiKeyManager.js';
 
+// Replicate rate limit configuration
+const REPLICATE_RATE_LIMITS = {
+    predictions: 600, // per minute
+    other: 3000 // per minute
+};
+
+/**
+ * Helper function to handle Replicate rate limiting with retry
+ */
+async function makeReplicateRequest(requestFn, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await requestFn();
+        } catch (error) {
+            if (error.response?.status === 429) {
+                const retryAfter = error.response.headers['retry-after'] || 
+                                 error.response.headers['x-ratelimit-reset-after'] || 
+                                 1; // Default to 1 second if no header
+                
+                if (attempt === maxRetries) {
+                    throw new Error(`Replicate API rate limit exceeded. Please wait ${retryAfter} second(s) and try again.`);
+                }
+                
+                console.log(`Replicate rate limit hit, retrying in ${retryAfter}s (attempt ${attempt}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                continue;
+            }
+            throw error; // Re-throw non-rate-limit errors
+        }
+    }
+}
+
 const router = express.Router();
 
 // Replicate API configuration
@@ -81,12 +113,14 @@ router.post('/predictions', validateApiKey, async (req, res) => {
             });
         }
 
-        const response = await axios.post(endpoint, requestBody, {
-            headers: {
-                'Authorization': `Token ${req.replicateApiKey}`,
-                'Content-Type': 'application/json',
-            },
-            timeout: 30000 // 30 seconds timeout
+        const response = await makeReplicateRequest(async () => {
+            return await axios.post(endpoint, requestBody, {
+                headers: {
+                    'Authorization': `Token ${req.replicateApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 30000 // 30 seconds timeout
+            });
         });
 
         res.json(response.data);
@@ -122,12 +156,14 @@ router.get('/predictions/:id', validateApiKey, async (req, res) => {
             });
         }
 
-        const response = await axios.get(`${REPLICATE_API_BASE}/predictions/${id}`, {
-            headers: {
-                'Authorization': `Token ${req.replicateApiKey}`,
-                'Content-Type': 'application/json',
-            },
-            timeout: 15000 // 15 seconds timeout
+        const response = await makeReplicateRequest(async () => {
+            return await axios.get(`${REPLICATE_API_BASE}/predictions/${id}`, {
+                headers: {
+                    'Authorization': `Token ${req.replicateApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 15000 // 15 seconds timeout
+            });
         });
 
         res.json(response.data);
@@ -156,12 +192,14 @@ router.post('/predictions/:id/cancel', validateApiKey, async (req, res) => {
     try {
         const { id } = req.params;
 
-        const response = await axios.post(`${REPLICATE_API_BASE}/predictions/${id}/cancel`, {}, {
-            headers: {
-                'Authorization': `Token ${req.replicateApiKey}`,
-                'Content-Type': 'application/json',
-            },
-            timeout: 10000
+        const response = await makeReplicateRequest(async () => {
+            return await axios.post(`${REPLICATE_API_BASE}/predictions/${id}/cancel`, {}, {
+                headers: {
+                    'Authorization': `Token ${req.replicateApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 10000
+            });
         });
 
         res.json(response.data);

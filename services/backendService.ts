@@ -163,6 +163,10 @@ export async function createPrediction(predictionData: PredictionRequest): Promi
         });
 
         if (response.status === 429) {
+            const errorData = await response.json();
+            if (errorData.message?.includes('Replicate')) {
+                throw new Error('Replicate API is busy. The system will automatically retry. Please wait a moment...');
+            }
             throw new Error('Server is busy, please wait a moment and try again');
         }
 
@@ -195,6 +199,10 @@ export async function getPredictionStatus(predictionId: string): Promise<Predict
         });
 
         if (response.status === 429) {
+            const errorData = await response.json();
+            if (errorData.message?.includes('Replicate')) {
+                throw new Error('Replicate API is busy. The system will automatically retry. Please wait a moment...');
+            }
             throw new Error('Server is busy, please wait a moment and try again');
         }
 
