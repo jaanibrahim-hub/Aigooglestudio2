@@ -18,12 +18,35 @@ export type ItemCategory =
 
 export type ModelType = 'man' | 'woman' | 'kid';
 
+export type SceneType = 
+  | 'coffee_shop' 
+  | 'beach' 
+  | 'office' 
+  | 'mountain' 
+  | 'city' 
+  | 'spa' 
+  | 'restaurant' 
+  | 'gym' 
+  | 'gallery' 
+  | 'concert' 
+  | 'library' 
+  | 'park'
+  | 'shopping'
+  | 'airport'
+  | 'wedding'
+  | 'nightclub'
+  | 'garden'
+  | 'studio'
+  | 'vintage';
+
 export interface WardrobeItem {
   id: string;
   name: string;
   url: string;
   category: ItemCategory;
   isPermanent?: boolean; // Preloaded items that can't be deleted
+  scene?: SceneType; // Scene-based categorization
+  background?: string; // Background description for scene-aware generation
 }
 
 export interface OutfitLayer {
@@ -58,4 +81,5 @@ export interface AppState {
   theme: 'light' | 'dark';
   isGalleryOpen: boolean;
   selectedModelType: ModelType;
+  isAboutModalOpen: boolean;
 }

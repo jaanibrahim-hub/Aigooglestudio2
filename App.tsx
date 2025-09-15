@@ -18,6 +18,7 @@ const IndustryPoseSelector = lazy(() => import('./components/IndustryPoseSelecto
 const GalleryModal = lazy(() => import('./components/GalleryModal'));
 const GeneratedImagesTray = lazy(() => import('./components/GeneratedImagesTray'));
 const LayeredOutfitBuilder = lazy(() => import('./components/LayeredOutfitBuilder'));
+const AboutModal = lazy(() => import('./components/AboutModal'));
 
 
 import { 
@@ -76,7 +77,8 @@ const useAppState = () => {
         const saved = localStorage.getItem('virtualTryOnState');
         if (saved) {
           const parsedState = JSON.parse(saved);
-          savedWardrobe = parsedState.wardrobe || defaultWardrobe;
+          // Always start with empty wardrobe - no preloaded items
+          savedWardrobe = defaultWardrobe; // This is empty array
           if (parsedState.theme) {
             initialTheme = parsedState.theme;
           } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -105,6 +107,7 @@ const useAppState = () => {
       theme: initialTheme,
       isGalleryOpen: false,
       selectedModelType: 'woman', // Default to woman
+      isAboutModalOpen: false,
     };
   });
 
@@ -627,6 +630,49 @@ const App: React.FC = () => {
                 images={galleryImages}
                 isOpen={state.isGalleryOpen}
                 onClose={() => updateState({ isGalleryOpen: false })}
+              />
+            </Suspense>
+          )}
+        </AnimatePresence>
+
+        {/* Fixed Control Panel - Theme Toggle and About Button */}
+        <div className="fixed top-4 left-4 z-40 flex flex-col gap-2">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={handleToggleTheme}
+            className="w-12 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group hover:scale-105"
+            aria-label="Toggle theme"
+          >
+            {state.theme === 'light' ? (
+              <svg className="w-5 h-5 text-gray-700 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-yellow-400 group-hover:text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            )}
+          </button>
+
+          {/* About Button */}
+          <button
+            onClick={() => updateState({ isAboutModalOpen: true })}
+            className="w-12 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group hover:scale-105"
+            aria-label="About VirtueWear"
+          >
+            <svg className="w-5 h-5 text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* About Modal */}
+        <AnimatePresence>
+          {state.isAboutModalOpen && (
+            <Suspense fallback={<div />}>
+              <AboutModal
+                isOpen={state.isAboutModalOpen}
+                onClose={() => updateState({ isAboutModalOpen: false })}
               />
             </Suspense>
           )}

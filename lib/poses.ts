@@ -158,7 +158,7 @@ export const POSE_CATEGORIES = {
     "Sustainable living eco-conscious pose"
   ],
 
-  // Travel & Hospitality Poses (12 poses)
+  // Travel & Hospitality Poses (50 poses) - EXPANDED
   travel: [
     "Tourist excited at landmark destination",
     "Business traveler professional airport pose",
@@ -171,7 +171,49 @@ export const POSE_CATEGORIES = {
     "Family vacation happy group dynamic",
     "Solo travel confident independent pose",
     "Eco-tourism responsible travel pose",
-    "Travel blogger content creation pose"
+    "Travel blogger content creation pose",
+    // Coffee Shop & Cafe Destinations (8 poses)
+    "Cozy coffee shop regular enjoying morning brew with warm interior background",
+    "Parisian cafe sidewalk seating with charming street background",
+    "Modern minimalist coffee house with clean white brick background",
+    "Vintage bookstore cafe with rustic wooden shelves background",
+    "Rooftop coffee terrace with city skyline background",
+    "Beach cafe tropical setting with ocean view background",
+    "Mountain lodge coffee corner with fireplace and wood cabin background",
+    "Airport coffee stand with departure gates background",
+    // Shopping Districts & Malls (10 poses)
+    "Luxury shopping district window browsing with designer store fronts background",
+    "Bustling marketplace vendor interaction with colorful market stalls background",
+    "Modern shopping mall center court with escalators and stores background",
+    "Vintage thrift shopping with retro clothing racks background",
+    "Outdoor farmers market with fresh produce stands background",
+    "Designer boutique personal shopping with elegant store interior background",
+    "Street food market casual dining with food vendor stalls background",
+    "Antique shopping browsing with vintage collectibles background",
+    "Electronics store tech shopping with modern gadget displays background",
+    "Local artisan market crafts shopping with handmade goods background",
+    // International City Destinations (12 poses)
+    "Tokyo street crossing with neon signs and urban backdrop",
+    "London phone booth classic pose with Big Ben in background",
+    "New York Times Square energy with bright billboards background",
+    "Paris Eiffel Tower romance with classic Parisian architecture background",
+    "Rome ancient ruins exploration with Colosseum backdrop",
+    "Barcelona Gaudi architecture admiration with colorful mosaic background",
+    "Dubai modern skyline with futuristic buildings background",
+    "Sydney Opera House waterfront with harbor bridge background",
+    "Amsterdam canal side stroll with historic row houses background",
+    "San Francisco Golden Gate Bridge with rolling hills background",
+    "Venice gondola ride with romantic canal background",
+    "Prague old town charm with medieval architecture background",
+    // Beach & Tropical Destinations (8 poses)
+    "Maldives overwater bungalow luxury with crystal clear water background",
+    "Caribbean beach volleyball with palm trees and white sand background",
+    "Hawaiian luau celebration with tropical flowers and tiki torches background",
+    "Bali rice terrace meditation with lush green landscape background",
+    "Santorini sunset viewing with white-washed buildings and blue domes background",
+    "Fiji snorkeling adventure with coral reef underwater background",
+    "Seychelles granite boulder beach with unique rock formations background",
+    "Costa Rica rainforest zip-lining with dense jungle canopy background"
   ],
 
   // Finance & Insurance Poses (10 poses)
@@ -328,10 +370,160 @@ export const POSE_CATEGORIES = {
     "Remote work video call setup pose",
     "Mentorship guidance experienced leader pose",
     "Success milestone achievement celebration pose"
+  ],
+
+  // Restaurant & Dining Experiences (25 poses)
+  dining: [
+    "Fine dining restaurant elegant dinner pose with upscale interior background",
+    "Casual family restaurant meal sharing with cozy booth background",
+    "Rooftop restaurant city views with skyline and twinkling lights background",
+    "Beachside seafood restaurant with ocean waves and sunset background",
+    "Wine tasting vineyard restaurant with rolling grape vines background",
+    "Sushi bar chef interaction with authentic Japanese restaurant background",
+    "Pizza parlor casual dining with brick oven and checkered tablecloths background",
+    "Food truck street dining with urban food truck lineup background",
+    "Michelin star restaurant celebration with elegant fine dining background",
+    "Brunch cafe weekend vibes with bright morning sunlight background",
+    "Tapas bar small plates sharing with Spanish tavern atmosphere background",
+    "BBQ smokehouse feast with rustic wooden tables and smoke background",
+    "Ice cream parlor sweet treat with colorful vintage shop background",
+    "Bakery fresh pastries with display cases and warm lighting background",
+    "Juice bar healthy smoothie with fresh fruit displays background",
+    "Steakhouse premium cut with dark wood and leather booth background",
+    "Ramen shop authentic bowl with Japanese lanterns and counter seating background",
+    "Taco stand street food with colorful Mexican tile and papel picado background",
+    "Cocktail lounge happy hour with dim lighting and bar backdrop background",
+    "Breakfast diner classic American with checkered floor and neon signs background",
+    "Vegetarian restaurant healthy choice with garden-fresh green background",
+    "Dessert cafe sweet indulgence with pastel colors and cake displays background",
+    "Sports bar game watching with multiple screens and team memorabilia background",
+    "Ethnic restaurant cultural cuisine with traditional decor background",
+    "Farm-to-table restaurant organic dining with rustic farmhouse background"
+  ],
+
+  // Urban City Lifestyle (30 poses)
+  urbanLife: [
+    "Street art district creative pose with colorful graffiti murals background",
+    "Downtown business district commuter with glass skyscrapers background",
+    "Hipster neighborhood coffee walk with trendy shops and brick buildings background",
+    "Financial district power lunch with corporate towers background",
+    "Artists quarter gallery browsing with contemporary art studio background",
+    "Nightlife district evening out with neon bar signs background",
+    "Historic district tour with cobblestone streets and heritage buildings background",
+    "Tech startup hub innovation with modern coworking spaces background",
+    "University campus academic with ivy-covered buildings background",
+    "Waterfront promenade stroll with marina and boats background",
+    "Public park city oasis with green trees and walking paths background",
+    "Farmers market local shopping with vendor stalls and fresh produce background",
+    "Museum district culture with classical columns and sculptures background",
+    "Theater district show night with marquee lights and red carpets background",
+    "Chinatown exploration with traditional architecture and lanterns background",
+    "Little Italy dining with checkered tablecloths and Italian flags background",
+    "SoHo shopping luxury with high-end boutiques and cast iron buildings background",
+    "Brooklyn bridge walk with iconic bridge cables and city skyline background",
+    "Central park picnic with meadows and city backdrop background",
+    "Times Square energy with bright billboards and crowds background",
+    "Wall Street finance with historic buildings and bull statue background",
+    "Greenwich Village charm with tree-lined streets and brownstones background",
+    "Meatpacking district trendy with industrial buildings and high line background",
+    "Chelsea market food hall with industrial ceiling and food vendors background",
+    "Tribeca loft living with converted warehouse and brick walls background",
+    "Upper East Side elegance with luxury apartments and doormen background",
+    "Harlem jazz club with vintage music venue and stage lights background",
+    "Williamsburg hipster with artisanal shops and warehouse conversions background",
+    "East Village punk with vintage record shops and dive bars background",
+    "Battery Park waterfront with Statue of Liberty and harbor views background"
+  ],
+
+  // Seasonal Destinations (40 poses)
+  seasonalDestinations: [
+    // Spring Destinations (10 poses)
+    "Cherry blossom festival in Washington DC with pink petals falling background",
+    "Tulip gardens in Holland with colorful flower fields background",
+    "Easter egg hunt in countryside with blooming meadows background",
+    "Spring hiking trail with wildflowers and mountain streams background",
+    "Garden party outdoor celebration with blooming roses background",
+    "Wine country spring with budding grape vines background",
+    "National park spring visit with waterfalls and fresh greenery background",
+    "Botanical garden stroll with exotic plants and glass greenhouse background",
+    "Spring farmers market with fresh vegetables and flower stands background",
+    "Outdoor concert spring festival with stage and green lawn background",
+    // Summer Destinations (10 poses)
+    "Beach volleyball tournament with sand courts and ocean background",
+    "Music festival summer vibes with outdoor stages and crowds background",
+    "Lake house vacation with wooden dock and clear water background",
+    "Camping adventure with tents and forest campfire background",
+    "Amusement park thrills with roller coasters and carnival lights background",
+    "Outdoor wedding ceremony with garden arch and summer flowers background",
+    "Pool party celebration with crystal blue water and palm trees background",
+    "Baseball stadium game day with green field and stadium lights background",
+    "Ice cream truck neighborhood with suburban street and children background",
+    "Sunset beach walk with golden hour and crashing waves background",
+    // Fall/Autumn Destinations (10 poses)
+    "Pumpkin patch visit with orange pumpkins and hay bales background",
+    "Fall foliage hiking with red and gold leaves background",
+    "Apple orchard picking with fruit trees and wooden ladders background",
+    "Thanksgiving dinner preparation with harvest decorations background",
+    "Halloween costume party with spooky decorations background",
+    "Corn maze adventure with tall stalks and autumn sky background",
+    "Wine harvest vineyard with grape picking and golden vines background",
+    "Football tailgate party with stadium parking and team colors background",
+    "Cozy cabin retreat with fireplace and fall forest background",
+    "Fall farmers market with gourds and autumn produce background",
+    // Winter Destinations (10 poses)
+    "Ski slope adventure with snow-capped mountains background",
+    "Ice skating rink with twinkling lights and winter evening background",
+    "Christmas market shopping with wooden stalls and holiday lights background",
+    "Cozy fireplace reading with snow falling outside windows background",
+    "Hot chocolate cafe with steam and winter window frost background",
+    "Snowball fight fun with snowy park and bare trees background",
+    "Winter wedding elegance with snow-covered landscape background",
+    "New Year's Eve celebration with fireworks and city lights background",
+    "Ice hotel stay with frozen architecture and aurora lights background",
+    "Winter festival with ice sculptures and snow activities background"
+  ],
+
+  // Adventure & Outdoor Destinations (35 poses)
+  adventureOutdoors: [
+    "Mountain peak summit with panoramic valley views background",
+    "Rock climbing challenge with cliff face and safety gear background",
+    "White water rafting thrill with rushing rapids and paddle splash background",
+    "Desert camping under stars with sand dunes and clear night sky background",
+    "Forest hiking trail with towering pine trees and dappled sunlight background",
+    "Cave exploration adventure with stalactites and headlamp lighting background",
+    "Glacier hiking expedition with blue ice and snow gear background",
+    "Safari jeep tour with African savanna and wildlife background",
+    "Scuba diving underwater with coral reef and tropical fish background",
+    "Paragliding flight with aerial mountain valley views background",
+    "Kayaking river journey with calm water and riverside forest background",
+    "Camping tent setup with wilderness and campfire smoke background",
+    "Fishing pier catch with lake reflection and early morning mist background",
+    "Horseback riding trail with meadow paths and distant mountains background",
+    "Zip-lining canopy tour with treetop views and safety harness background",
+    "Surfing wave ride with ocean spray and beach shoreline background",
+    "Snowshoeing winter trail with snow-laden evergreens background",
+    "Birdwatching nature observation with binoculars and forest background",
+    "Geocaching treasure hunt with GPS device and hidden cache background",
+    "Photography expedition with camera and scenic landscape background",
+    "Stargazing night sky with telescope and constellation background",
+    "Wildflower meadow walk with colorful blooms and rolling hills background",
+    "Waterfall discovery with misty spray and moss-covered rocks background",
+    "Beach combing treasure search with shells and driftwood background",
+    "Lighthouse visit coastal with rocky shore and crashing waves background",
+    "Hot air balloon ride with patchwork farmland aerial view background",
+    "Canoeing lake paddle with mirror-still water and mountain reflection background",
+    "Trail running mountain path with switchback trails and summit views background",
+    "Tide pool exploration with sea anemones and rocky shore background",
+    "Butterfly garden visit with colorful wings and flowering plants background",
+    "Volcano hiking expedition with lava fields and steam vents background",
+    "Glacier bay cruise with icebergs and whale watching background",
+    "Desert oasis discovery with palm trees and spring water background",
+    "Northern lights viewing with aurora borealis and snowy landscape background",
+    "Canyon rappelling adventure with red rock walls and rope gear background"
   ]
 };
 
-// Enhanced pose instructions compilation with all new categories
+// Enhanced pose instructions compilation with all new categories (500+ poses total)
 export const POSE_INSTRUCTIONS = [
   ...POSE_CATEGORIES.professional,
   ...POSE_CATEGORIES.ecommerce,
@@ -350,7 +542,11 @@ export const POSE_INSTRUCTIONS = [
   ...POSE_CATEGORIES.editorial,
   ...POSE_CATEGORIES.lifestyle,
   ...POSE_CATEGORIES.seasonal,
-  ...POSE_CATEGORIES.corporate
+  ...POSE_CATEGORIES.corporate,
+  ...POSE_CATEGORIES.dining,
+  ...POSE_CATEGORIES.urbanLife,
+  ...POSE_CATEGORIES.seasonalDestinations,
+  ...POSE_CATEGORIES.adventureOutdoors
 ];
 
 // Enhanced industry-specific pose metadata with new categories
@@ -439,5 +635,25 @@ export const INDUSTRY_METADATA = {
     description: "Corporate communications and business leadership poses",
     keyFeatures: ["Executive presence", "Business credibility", "Professional authority"],
     useCases: ["Corporate websites", "Annual reports", "Executive portraits", "Business communications"]
+  },
+  dining: {
+    description: "Restaurant and culinary dining experience poses with location backgrounds",
+    keyFeatures: ["Food presentation", "Restaurant ambiance", "Dining atmosphere", "Culinary settings"],
+    useCases: ["Restaurant marketing", "Food delivery apps", "Culinary tourism", "Dining reviews", "Food blogs"]
+  },
+  urbanLife: {
+    description: "City lifestyle and metropolitan area poses with urban backgrounds",
+    keyFeatures: ["Urban exploration", "City landmarks", "Street culture", "Metropolitan lifestyle"],
+    useCases: ["City tourism", "Urban fashion", "Lifestyle brands", "Real estate", "City guides"]
+  },
+  seasonalDestinations: {
+    description: "Seasonal travel and holiday destination poses with themed backgrounds",
+    keyFeatures: ["Seasonal activities", "Holiday celebrations", "Weather-specific poses", "Festival atmosphere"],
+    useCases: ["Seasonal marketing", "Holiday campaigns", "Travel promotions", "Event planning", "Tourism boards"]
+  },
+  adventureOutdoors: {
+    description: "Outdoor adventure and nature exploration poses with natural backgrounds",
+    keyFeatures: ["Adventure activities", "Natural landscapes", "Outdoor gear", "Wilderness settings"],
+    useCases: ["Outdoor brands", "Adventure tourism", "Sports equipment", "Travel agencies", "Nature photography"]
   }
 };

@@ -220,10 +220,10 @@ export const hasValidSession = (): boolean => {
 export const generateModelImage = async (userImage: File, options: GenerationOptions = {}): Promise<string> => {
     const userImageDataUrl = await fileToDataUrl(userImage);
     const backgroundInstruction = options.backgroundColor === 'black'
-        ? 'a clean, pure black (#000000) studio background'
-        : 'a clean, light gray (#f0f0f0) studio background';
+        ? 'solid black background'
+        : 'clean white studio background';
 
-    const prompt = `You are an expert fashion photographer AI. Transform the person in this image into a full-body fashion model photo suitable for an e-commerce website. The background must be ${backgroundInstruction}. The person should have a neutral, professional model expression. Preserve the person's identity, unique features, and body type, but place them in a standard, relaxed standing model pose. The final image must be photorealistic. Return ONLY the final image.`;
+    const prompt = `Professional full-body fashion model photo. Transform this person into a complete head-to-toe model shot suitable for clothing try-on. Show the entire body from head to feet in a natural standing pose. Use ${backgroundInstruction}. Keep the person's exact face, identity, and body proportions. Professional studio lighting, high quality fashion photography style.`;
 
     const input: ReplicateInput = {
         prompt,
@@ -240,11 +240,101 @@ export const generateVirtualTryOnImage = async (
     options?: GenerationOptions
 ): Promise<string> => {
     const garmentDataUrl = await fileToDataUrl(garmentImage);
-    const prompt = `Edit the person in the first image to wear the garment from the second image. Remove the original clothing and naturally fit the new garment to the person's body shape and pose. Maintain realistic fabric draping, shadows, and lighting consistency. Preserve the person's identity, pose, and background exactly.`;
+    
+    const prompt = `Virtual clothing try-on. Take the clothing item from the second image and put it on the person in the first image. Keep the same person, same face, same body, same pose, same background from the first image. Only replace the conflicting clothes with the new garment. The person's identity and appearance must remain identical.`;
 
     const input: ReplicateInput = {
         prompt,
         image_input: [modelImageUrl, garmentDataUrl],
+        output_format: 'png',
+    };
+
+    return runReplicatePrediction(input, options?.signal);
+};
+
+/**
+ * Generate face replacement while preserving the body and clothing
+ */
+export const generateFaceReplacement = async (
+    baseModelImageUrl: string,
+    faceReferenceImage: File,
+    options?: GenerationOptions
+): Promise<string> => {
+    const faceDataUrl = await fileToDataUrl(faceReferenceImage);
+    
+    const prompt = `Replace ONLY the face in the first image with the face from the second image. Keep the exact same body, clothing, pose, background, and everything else from the first image. Only change the facial features - do not change the body, clothes, or pose at all.`;
+
+    const input: ReplicateInput = {
+        prompt,
+        image_input: [baseModelImageUrl, faceDataUrl],
+        output_format: 'png',
+    };
+
+    return runReplicatePrediction(input, options?.signal);
+};
+
+/**
+ * Specialized face-only replacement function (nano-banana optimized)
+ */
+export const generateFaceOnlyReplacement = async (
+    baseModelImageUrl: string,
+    faceReferenceImage: File,
+    options?: GenerationOptions
+): Promise<string> => {
+    const faceDataUrl = await fileToDataUrl(faceReferenceImage);
+    
+    const prompt = `Face swap only. Replace the face in the first image with the face from the second image. Keep everything else from the first image exactly the same: same body, same clothes, same pose, same background, same lighting, same accessories. Only change the facial features and blend seamlessly at the neck.`;
+
+    const input: ReplicateInput = {
+        prompt,
+        image_input: [baseModelImageUrl, faceDataUrl],
+        output_format: 'png',
+    };
+
+    return runReplicatePrediction(input, options?.signal);
+};
+
+/**
+ * Generate clothing-only try-on with category-specific replacement
+ */
+export const generateClothingOnlyTryOn = async (
+    baseModelImageUrl: string,
+    clothingReferenceImage: File,
+    itemCategory: ItemCategory,
+    options?: GenerationOptions & { 
+        scene?: string; 
+        background?: string; 
+    }
+): Promise<string> => {
+    const clothingDataUrl = await fileToDataUrl(clothingReferenceImage);
+    
+    let removalInstruction = '';
+    switch (itemCategory) {
+        case 'top':
+            removalInstruction = 'Replace only the shirt/top while keeping pants, shoes, and everything else the same';
+            break;
+        case 'bottom':
+            removalInstruction = 'Replace only the pants/bottoms while keeping the top, shoes, and everything else the same';
+            break;
+        case 'shoes':
+            removalInstruction = 'Replace only the shoes while keeping all clothing the same';
+            break;
+        default:
+            removalInstruction = `Replace only the ${itemCategory} while keeping everything else identical`;
+    }
+    
+    let backgroundInstruction = '';
+    if (options?.background) {
+        backgroundInstruction = ` Change the background to: ${options.background}.`;
+    } else {
+        backgroundInstruction = ' Keep the same background.';
+    }
+    
+    const prompt = `${removalInstruction}. Take the clothing item from the second image and apply it to the person in the first image. Keep the same person, same face, same pose.${backgroundInstruction} Only change the specific clothing piece and background if specified.`;
+
+    const input: ReplicateInput = {
+        prompt,
+        image_input: [baseModelImageUrl, clothingDataUrl],
         output_format: 'png',
     };
 
@@ -258,26 +348,48 @@ export const generateOutfitModification = async (
     options?: GenerationOptions
 ): Promise<string> => {
     const itemDataUrl = await fileToDataUrl(itemImage);
+    
+    // Special handling for face category - use dedicated face replacement
+    if (itemInfo.category === 'face') {
+        return generateFaceOnlyReplacement(modelImageUrl, itemImage, options);
+    }
+    
     let prompt = '';
-
-    const baseInstruction = `Edit the person's outfit in the first image by incorporating the item from the second image. Preserve the person's identity, pose, background, and all other existing clothing items perfectly. The result must be photorealistic, with natural lighting and shadows.`;
+    const basePreservation = `Keep the exact same person, face, body proportions, pose, and background from the first image. `;
 
     switch (itemInfo.category) {
+        case 'top':
+            prompt = `${basePreservation}Replace only the shirt/top/upper clothing with the garment from the second image. Keep pants, shoes, accessories, and everything else identical.`;
+            break;
         case 'bottom':
-            prompt = `${baseInstruction} Replace ONLY the bottoms (pants, skirt, etc.) with the new item. Ensure the waistline aligns correctly and the fabric drapes naturally over the legs.`;
+            prompt = `${basePreservation}Replace only the pants/bottoms/lower clothing with the garment from the second image. Keep shirt, shoes, accessories, and everything else identical.`;
             break;
         case 'shoes':
-            prompt = `${baseInstruction} Replace ONLY the shoes with the new item. Ensure they are correctly sized for the feet and placed realistically on the ground, casting appropriate shadows.`;
+            prompt = `${basePreservation}Replace only the footwear with the shoes from the second image. Keep all clothing, accessories, and everything else identical.`;
             break;
-        case 'accessory':
-            prompt = `${baseInstruction} ADD the accessory (${itemInfo.name}) to the person in a natural way (e.g., around the neck for a necklace). Do not replace any existing clothes.`;
+        case 'jewelry':
+            prompt = `${basePreservation}Add the jewelry from the second image as an accessory. Do not remove any existing clothing. Position naturally (necklace around neck, ring on finger, etc.).`;
+            break;
+        case 'eyewear':
+            prompt = `${basePreservation}Add the eyewear from the second image to the person's face. Do not change any clothing. Ensure proper fit and positioning.`;
+            break;
+        case 'bags':
+            prompt = `${basePreservation}Add the bag from the second image in a natural carrying position. Do not change any clothing. Position based on bag type (shoulder, hand, back, etc.).`;
+            break;
+        case 'watches':
+            prompt = `${basePreservation}Add the watch from the second image to the person's wrist. Do not change any clothing. Ensure proper sizing and positioning.`;
+            break;
+        case 'accessories':
+            prompt = `${basePreservation}Add the accessory from the second image appropriately. Do not change any clothing. Position naturally based on accessory type.`;
             break;
         case 'held':
-            prompt = `${baseInstruction} Edit the image so the person is naturally holding the item (${itemInfo.name}) in their hand. Do not change their clothes.`;
+            prompt = `${basePreservation}Position the person naturally holding the item from the second image. Adjust hand position realistically but keep all clothing identical.`;
             break;
-        case 'top':
+        case 'hair':
+            prompt = `${basePreservation}Change only the hairstyle to match the hair from the second image. Keep the exact same face, clothing, pose, and background.`;
+            break;
         default:
-             // Fallback to the main try-on logic for tops, as it's the most common replacement
+            // Fallback to general try-on
             return generateVirtualTryOnImage(modelImageUrl, itemImage, options);
     }
 
@@ -286,6 +398,7 @@ export const generateOutfitModification = async (
         image_input: [modelImageUrl, itemDataUrl],
         output_format: 'png'
     };
+    
     return runReplicatePrediction(input, options?.signal);
 };
 
@@ -294,7 +407,46 @@ export const generatePoseVariation = async (
     poseInstruction: string, 
     options?: GenerationOptions
 ): Promise<string> => {
-    const prompt = `Edit the person's pose to match this description: "${poseInstruction}". It is critical to keep the person, their facial identity, all clothing items, and the background identical to the input image. The clothing should realistically adapt and drape according to the new pose with natural folds and shadows.`;
+    const prompt = `🎯 POSE TRANSFORMATION SPECIALIST
+
+📋 MISSION: Change the person's pose to match this specific instruction: "${poseInstruction}"
+
+👤 ABSOLUTE PRESERVATION REQUIREMENTS:
+- Maintain EXACT facial features, identity, skin tone, and all unique characteristics
+- Keep identical clothing items, colors, patterns, and styling exactly as they appear
+- Preserve all accessories (jewelry, shoes, bags, etc.) in their current state
+- Maintain background, lighting direction, shadows, and camera perspective perfectly
+- Honor fabric textures, material properties, and garment details precisely
+
+🔄 POSE TRANSFORMATION PROTOCOL:
+- Apply the requested pose change: "${poseInstruction}"
+- Ensure anatomically correct body positioning and natural movement
+- Maintain realistic joint angles and comfortable human positioning
+- Preserve natural body proportions and individual physical characteristics
+- Create smooth, graceful transition to the new pose without awkwardness
+
+👔 CLOTHING ADAPTATION REQUIREMENTS:
+- Fabric must drape naturally according to gravity and body position in the new pose
+- Create realistic wrinkles, folds, and fabric tension appropriate for the pose change
+- Maintain proper garment fit and positioning relative to the new body position
+- Ensure clothing continues to look naturally worn, not artificially positioned
+- Preserve fabric behavior consistent with material properties (stretch, stiffness, etc.)
+
+🎨 TECHNICAL EXCELLENCE:
+- Maintain consistent lighting and shadow direction throughout the transformation
+- Apply realistic shadow casting from the body in the new pose
+- Ensure seamless integration with no visible editing artifacts
+- Preserve original image quality, sharpness, and color accuracy
+- Create natural depth and perspective appropriate for the new positioning
+
+✅ QUALITY VALIDATION:
+- Pose appears natural, comfortable, and humanly achievable
+- All clothing drapes and behaves realistically for the new position
+- Identity, styling, and scene context remain perfectly preserved
+- Result looks like the same person naturally moved into the new pose
+- No artificial distortions, floating elements, or impossible physics
+
+EXECUTE: Transform only the pose while preserving everything else with complete photorealistic accuracy.`;
     
     const input: ReplicateInput = {
         prompt,
@@ -463,82 +615,189 @@ const getEnhancedCategoryInstructions = (
 };
 
 const generateTopInstructions = (item: EnhancedItemInfo, context: PromptContext): string => {
-    let instructions = `🔄 UPPER BODY TRANSFORMATION: Replace the current top with ${item.name}.`;
+    let instructions = `🔄 COMPLETE UPPER BODY REPLACEMENT:
+
+REMOVAL PHASE:
+- Remove ALL existing upper body garments completely (shirts, blouses, jackets, sweaters, tank tops, vests)
+- Clear the entire torso area while preserving natural skin texture and tone
+- Maintain lower body clothing, accessories, and undergarments as appropriate
+- Ensure clean removal without artifacts or remnants of previous clothing
+
+APPLICATION PHASE:
+- Apply ${item.name} as the new primary upper body garment
+- Position with anatomically correct shoulder alignment and natural fit
+- Ensure proper neckline positioning that complements the person's anatomy
+- Fit sleeves (if applicable) to exact arm length and width measurements
+- Position hem at appropriate torso level for the specific garment style`;
     
-    // Material-specific behavior
+    // Material-specific enhancements
     if (item.material) {
-        const materialBehavior = AdvancedPromptEngine['MATERIAL_BEHAVIORS'][item.material];
-        if (materialBehavior) {
-            instructions += ` Apply ${materialBehavior} characteristics throughout the garment.`;
+        const materialDetails = {
+            cotton: "soft, breathable fabric with natural wrinkles and comfortable drape",
+            denim: "structured cotton weave with authentic stitching, proper weight, and characteristic texture",
+            silk: "luxurious flowing material with subtle sheen and elegant fluid movement",
+            leather: "form-fitting structured material with realistic texture, natural creasing, and appropriate reflections",
+            wool: "cozy textured fabric with natural fiber appearance and seasonal warmth characteristics",
+            linen: "crisp breathable fabric with characteristic natural wrinkles and lightweight texture",
+            polyester: "smooth wrinkle-resistant synthetic with clean lines and consistent appearance",
+            spandex: "stretchy form-fitting material that moves naturally with body contours"
+        };
+        
+        const detail = materialDetails[item.material];
+        if (detail) {
+            instructions += `\n\nMATERIAL PROPERTIES: Apply authentic ${item.material} characteristics - ${detail}. Ensure the fabric behaves realistically with proper weight, texture, and draping physics.`;
         }
     }
     
-    // Fit-specific adjustments
+    // Fit-specific detailed adjustments
     if (item.fit) {
-        const fitInstructions = {
-            slim: "Ensure close-fitting silhouette that follows body contours naturally without being restrictive",
-            regular: "Apply standard comfortable fit with proper room for movement and natural drape",
-            loose: "Create relaxed, flowing fit with extra room while maintaining flattering proportions",
-            oversized: "Apply deliberately oversized styling that looks intentional, not ill-fitting",
-            fitted: "Ensure precise body-hugging fit that enhances natural shape elegantly"
+        const fitGuidelines = {
+            slim: "Close-fitting silhouette that follows body contours naturally without appearing restrictive. Show natural body shape through the fabric with appropriate ease.",
+            regular: "Standard comfortable fit with proper room for movement and natural drape. Neither too tight nor too loose - classic flattering proportions.",
+            loose: "Relaxed fit with extra room for comfort, but still maintaining flattering silhouette. Avoid appearing oversized accidentally - should look intentionally stylish.",
+            oversized: "Intentionally larger fit that appears fashionable and deliberate, not poorly sized. Maintain style proportions even with extra room.",
+            fitted: "Body-hugging fit that elegantly enhances natural shape without being restrictive. Perfect contouring that flatters the figure professionally."
         };
-        instructions += ` ${fitInstructions[item.fit] || ''}`;
+        
+        instructions += `\n\nFIT SPECIFICATION: ${fitGuidelines[item.fit] || 'Apply natural, comfortable fit that flatters the body type.'}`;
     }
-    
-    // Style and occasion considerations
+
+    // Occasion and styling context
     if (item.occasion) {
-        const occasionNotes = {
-            casual: "Style for everyday comfort and relaxed elegance",
-            business: "Maintain professional, polished appearance suitable for workplace",
-            formal: "Apply sophisticated, refined styling appropriate for formal events",
-            athletic: "Ensure performance-oriented fit with functional styling elements",
-            party: "Add fashionable flair with attention to style details and visual appeal"
+        const occasionStyling = {
+            casual: "Style for everyday comfort with relaxed elegance and effortless appeal",
+            business: "Maintain crisp, professional appearance suitable for workplace environments",
+            formal: "Apply sophisticated, refined styling appropriate for elegant events and occasions",
+            athletic: "Ensure performance-oriented fit with functional elements and movement capability",
+            party: "Add fashionable flair with attention-grabbing style details and visual appeal",
+            outdoor: "Apply practical styling suitable for outdoor activities with appropriate durability",
+            lounge: "Create comfortable, relaxed styling perfect for leisure and informal settings"
         };
-        instructions += ` ${occasionNotes[item.occasion] || ''}`;
+        instructions += `\n\nOCCASION STYLING: ${occasionStyling[item.occasion] || 'Apply appropriate styling for the garment type.'}`;
     }
     
-    instructions += ` Ensure proper shoulder alignment, appropriate neckline positioning, and natural sleeve draping.`;
+    instructions += `\n\nCRITICAL FITTING REQUIREMENTS:
+- Shoulders must align perfectly with the person's natural shoulder width and slope
+- Natural armpit positioning with realistic side seam placement  
+- Proper fabric tension and stretch around chest, waist, and torso curves
+- Realistic neckline that complements face shape and proportions
+- Natural sleeve attachment and armhole positioning (if applicable)
+- Appropriate garment length and hem positioning for the style
+- No floating, disconnected, or unnaturally positioned fabric areas
+- Seamless integration with existing lower body clothing and accessories`;
     
     return instructions;
 };
 
 const generateBottomInstructions = (item: EnhancedItemInfo, context: PromptContext): string => {
-    let instructions = `🔄 LOWER BODY TRANSFORMATION: Replace the current bottom garment with ${item.name}.`;
+    let instructions = `🔄 COMPLETE LOWER BODY REPLACEMENT:
+
+REMOVAL PHASE:
+- Remove ALL existing lower body garments completely (pants, skirts, shorts, leggings, capris)
+- Clear the entire hip, thigh, and leg area while preserving natural skin texture
+- Maintain upper body clothing, footwear, and accessories unless specifically replacing those
+- Ensure clean removal of previous garments with no remnants or artifacts
+
+APPLICATION PHASE:
+- Apply ${item.name} as the new primary lower body garment
+- Position waistline at the person's natural waist level with proper fit
+- Ensure anatomically correct hip accommodation and thigh positioning
+- Fit the garment to exact leg width, length, and body proportions
+- Create natural crotch area positioning and realistic inseam alignment`;
     
-    // Material and fit integration
-    if (item.material === 'denim') {
-        instructions += ` Apply authentic denim texture with realistic wear patterns, proper stitching details, and characteristic fabric weight.`;
+    // Enhanced material-specific details
+    if (item.material) {
+        const materialSpecs = {
+            denim: "Apply authentic denim characteristics with visible contrast stitching, natural fade patterns, realistic pocket placement, proper fabric weight and stiffness, characteristic indigo coloring",
+            cotton: "Soft, breathable fabric behavior with natural draping, comfortable stretch, and casual appearance suitable for everyday wear",
+            leather: "Structured, form-fitting material with realistic texture, appropriate sheen, natural creasing patterns, and premium appearance",
+            wool: "Warm, textured fabric with natural fiber appearance, appropriate weight for the season, and professional tailored look",
+            linen: "Crisp, lightweight fabric with characteristic natural wrinkles, breathable appearance, and elegant casual styling",
+            spandex: "Stretchy, form-fitting material that moves naturally with the body, maintaining shape while allowing full range of motion"
+        };
+        
+        if (materialSpecs[item.material]) {
+            instructions += `\n\nMATERIAL AUTHENTICITY: ${materialSpecs[item.material]}`;
+        }
     }
     
     if (item.fit) {
         const fitInstructions = {
-            skinny: "Create form-fitting silhouette that follows leg contours naturally without appearing painted-on",
-            slim: "Apply tailored fit that's close to the body but allows natural movement",
-            straight: "Ensure classic straight-leg silhouette with consistent width from hip to hem",
-            loose: "Create relaxed fit with comfortable room throughout while maintaining shape"
+            skinny: "Form-fitting silhouette that follows leg contours naturally from hip to ankle without appearing painted-on. Natural body shape visible through fabric with appropriate stretch.",
+            slim: "Tailored fit that's close to the body but allows comfortable movement. Streamlined silhouette with flattering proportions throughout legs and hips.",
+            straight: "Classic straight-leg silhouette with consistent width from hip to hem. Timeless, flattering cut that works for all body types.",
+            loose: "Relaxed fit with comfortable room throughout legs and hips while maintaining stylish proportions. Casual elegance without appearing oversized.",
+            bootcut: "Fitted through hips and thighs with subtle flare from knee to hem. Balanced proportions that complement footwear choices.",
+            wide: "Intentionally wider leg openings with flowing, elegant drape. Fashion-forward proportions that create dramatic silhouette."
         };
-        instructions += ` ${fitInstructions[item.fit] || ''}`;
+        instructions += `\n\nFIT SPECIFICATION: ${fitInstructions[item.fit] || 'Apply natural, flattering fit that suits the body type.'}`;
     }
     
-    instructions += ` Ensure proper waistline alignment, appropriate length for ${context.modelType}, and realistic fabric behavior around curves and joints.`;
+    instructions += `\n\nCRITICAL FITTING REQUIREMENTS:
+- Proper waistline positioning at natural waist level (high, mid, or low rise as appropriate)
+- Natural hip curve accommodation with realistic fabric behavior over glutes and thighs
+- Appropriate inseam length and crotch positioning for comfort and authenticity
+- Realistic hem length matching the intended style (full-length, cropped, ankle, etc.)
+- Natural fabric draping and tension at movement points (knees, seat, thighs)
+- Proper rise and leg opening proportions for the specific garment style
+- Seamless integration with existing upper body clothing and footwear
+- No floating, bunching, or unnaturally positioned fabric areas`;
     
     return instructions;
 };
 
 const generateShoeInstructions = (item: EnhancedItemInfo, context: PromptContext): string => {
-    let instructions = `👟 FOOTWEAR REPLACEMENT: Replace current shoes with ${item.name}.`;
-    
-    instructions += ` Ensure correct sizing proportional to ${context.modelType} feet, proper ground contact with realistic shadows, and appropriate positioning for the current stance.`;
-    
-    if (item.material === 'leather') {
-        instructions += ` Apply authentic leather texture with natural creasing and appropriate sheen.`;
+    let instructions = `👟 COMPLETE FOOTWEAR REPLACEMENT:
+
+REMOVAL PHASE:
+- Remove ALL existing footwear completely (shoes, boots, sandals, slippers)
+- Clear feet area while preserving natural foot shape and skin texture
+- Maintain all clothing, accessories, and socks/hosiery as appropriate
+
+APPLICATION PHASE:
+- Apply ${item.name} with anatomically correct foot positioning
+- Ensure proper sizing proportional to the person's foot measurements
+- Position with realistic ground contact and natural weight distribution
+- Create appropriate heel height and sole thickness for the shoe type`;
+
+    // Material-specific shoe characteristics
+    if (item.material) {
+        const shoeMaterials = {
+            leather: "Apply authentic leather texture with natural creasing, appropriate sheen, and premium appearance. Show realistic wear patterns and flexibility.",
+            canvas: "Create breathable fabric appearance with natural texture and casual styling. Ensure proper fabric behavior and comfort appearance.",
+            rubber: "Apply weather-resistant material properties with appropriate grip patterns and functional design elements.",
+            synthetic: "Create modern synthetic material appearance with appropriate technical properties and contemporary styling."
+        };
+        
+        if (shoeMaterials[item.material]) {
+            instructions += `\n\nMATERIAL AUTHENTICITY: ${shoeMaterials[item.material]}`;
+        }
     }
-    
-    if (item.occasion === 'athletic') {
-        instructions += ` Position with athletic functionality and performance-oriented styling.`;
-    } else if (item.occasion === 'formal') {
-        instructions += ` Maintain elegant, polished appearance suitable for formal occasions.`;
+
+    // Occasion-specific styling
+    if (item.occasion) {
+        const shoeOccasions = {
+            athletic: "Apply performance-oriented design with proper arch support appearance, breathable materials, and functional athletic styling",
+            formal: "Maintain elegant, polished appearance suitable for formal occasions with refined silhouette and premium finishing",
+            casual: "Create comfortable, everyday styling with relaxed proportions and versatile appearance",
+            business: "Apply professional styling appropriate for workplace environments with polished, conservative design",
+            outdoor: "Show durable construction with appropriate grip patterns and weather-resistant properties"
+        };
+        
+        if (shoeOccasions[item.occasion]) {
+            instructions += `\n\nOCCASION STYLING: ${shoeOccasions[item.occasion]}`;
+        }
     }
+
+    instructions += `\n\nCRITICAL FOOTWEAR REQUIREMENTS:
+- Proper foot-to-shoe proportion matching the person's natural foot size
+- Realistic ground contact with authentic shadow casting and weight distribution
+- Natural ankle positioning and comfortable fit appearance around foot contours
+- Appropriate lacing, straps, or closure systems positioned correctly and functionally
+- Proper heel-to-toe alignment matching the person's natural stance and gait
+- Seamless integration with existing leg clothing (pants, skirts, socks, tights)
+- Realistic sole thickness and heel height appropriate for the shoe style
+- No floating, misaligned, or unnaturally positioned footwear elements`;
     
     return instructions;
 };
@@ -750,8 +1009,8 @@ export const generateLayeredOutfit = async (
         occasion: detectOccasion(item.name),
     }));
     
-    // Build intelligent layering instructions
-    let layeredInstructions = `Transform this person into a complete styled outfit using ALL ${selectedItems.length} items with professional fashion coordination.\n\n`;
+    // Build intelligent layering instructions with identity preservation focus
+    let layeredInstructions = `Apply all ${selectedItems.length} items to the person from the first image while keeping their exact identity, face, body, pose, and background unchanged. Use professional fashion coordination.\n\n`;
 
     // Intelligent item categorization and prioritization
     const clothingItems = enhancedItems.filter(item => ['top', 'bottom', 'shoes'].includes(item.category));
@@ -811,17 +1070,17 @@ export const generateLayeredOutfit = async (
     }
 
     // Final coordination and style harmony
-    layeredInstructions += `🎯 FINAL STYLE COORDINATION:\n`;
-    layeredInstructions += `- Ensure all ${selectedItems.length} items work together harmoniously\n`;
-    layeredInstructions += `- Verify color palette coordination and style consistency\n`;
-    layeredInstructions += `- Apply professional styling principles for a cohesive look\n`;
-    layeredInstructions += `- Maintain realistic proportions and natural fabric behavior throughout\n`;
+    layeredInstructions += `🎯 FINAL REQUIREMENTS:\n`;
+    layeredInstructions += `- Keep the exact same person identity, face, and body from the first image\n`;
+    layeredInstructions += `- Ensure all ${selectedItems.length} items coordinate harmoniously\n`;
+    layeredInstructions += `- Maintain the same pose, background, and lighting\n`;
+    layeredInstructions += `- Apply professional styling for a cohesive look\n`;
     
     if (options?.style) {
         layeredInstructions += `- Overall aesthetic should reflect ${options.style} styling approach\n`;
     }
     
-    layeredInstructions += `\nResult must be a magazine-quality styled outfit that looks professionally coordinated and naturally integrated.`;
+    layeredInstructions += `\nThe person's identity must remain completely unchanged while wearing the new coordinated outfit.`;
 
     // Generate the comprehensive prompt using advanced engine
     const finalPrompt = AdvancedPromptEngine.generateContextualPrompt(
@@ -1123,4 +1382,149 @@ export const generateMultipleVariations = async (
     console.log(`🎯 Batch processing completed: ${successful} successful, ${failed} failed, avg ${avgProcessingTime.toFixed(0)}ms per item`);
     
     return results;
+};
+
+/**
+ * Universal Virtual Try-On Function - Handles any clothing type with advanced prompting
+ */
+export const generateUniversalVirtualTryOn = async (
+    modelImageUrl: string,
+    garmentImage: File,
+    itemInfo: WardrobeItem,
+    modelType: ModelType,
+    options?: GenerationOptions & { 
+        preserveBackground?: boolean;
+        enhanceLighting?: boolean;
+        style?: 'casual' | 'formal' | 'athletic' | 'trendy' | 'classic';
+    }
+): Promise<string> => {
+    const garmentDataUrl = await fileToDataUrl(garmentImage);
+    
+    // Build context-aware prompt based on item category
+    let prompt = `🎯 PROFESSIONAL VIRTUAL FITTING SPECIALIST
+
+TRANSFORMATION OBJECTIVE: Apply the garment from image 2 to the person in image 1 with complete photorealistic precision.
+
+📋 STEP 1 - COMPREHENSIVE ANALYSIS PHASE:
+- Identify the exact garment type, style, cut, material, and intended fit from reference image
+- Analyze the person's body proportions, current pose, and existing outfit composition  
+- Determine which existing clothing items need removal vs. preservation
+- Study lighting direction, background elements, and overall photography style
+
+🚫 STEP 2 - PRECISE REMOVAL PROTOCOL:`;
+
+    // Category-specific removal and application instructions
+    switch (itemInfo.category) {
+        case 'top':
+            prompt += `
+- Remove ALL upper body clothing completely (shirts, blouses, jackets, sweaters, vests, tank tops)
+- Preserve lower body clothing, footwear, and appropriate accessories
+- Maintain natural skin appearance and texture in newly exposed torso areas
+- Keep undergarments as contextually appropriate for the new garment style`;
+            break;
+        case 'bottom':
+            prompt += `
+- Remove ALL lower body clothing completely (pants, skirts, shorts, leggings, capris)
+- Preserve upper body clothing, footwear, and all accessories
+- Maintain natural skin appearance in exposed leg areas for shorter garments
+- Ensure smooth transition areas where new garment meets existing clothing`;
+            break;
+        case 'shoes':
+            prompt += `
+- Remove existing footwear completely while preserving foot shape and natural positioning
+- Maintain all clothing items and accessories in their current state
+- Keep natural stance and weight distribution for proper shoe application`;
+            break;
+        case 'face':
+            prompt += `
+- This is a FACE SWAP operation - replace ONLY facial features from reference image
+- Preserve ALL existing clothing, hair, accessories, body, pose, and background
+- Maintain seamless blending at neck boundary with natural skin tone matching`;
+            break;
+        case 'hair':
+            prompt += `
+- This is a HAIRSTYLE CHANGE operation - modify ONLY the hair from reference image  
+- Preserve ALL existing facial features, clothing, accessories, body, pose, and background
+- Ensure new hairstyle fits naturally on existing head shape and proportions`;
+            break;
+        default:
+            prompt += `
+- Remove only conflicting items that would interfere with the new ${itemInfo.category}
+- Preserve all non-conflicting clothing, accessories, and styling elements
+- Maintain overall outfit integrity while integrating the new item naturally`;
+    }
+
+    prompt += `
+
+👔 STEP 3 - EXPERT GARMENT APPLICATION:
+- Apply ${itemInfo.name} with anatomically perfect positioning and natural fit
+- Match the person's exact body measurements, proportions, and physical characteristics
+- Ensure proper garment mechanics (how it should naturally sit, hang, and move)
+- Maintain ALL original garment details: colors, patterns, textures, hardware, logos
+- Create realistic fabric physics with natural draping, wrinkles, and material behavior
+
+🎨 STEP 4 - PHOTOREALISTIC INTEGRATION:
+- Match existing lighting conditions, shadow directions, and ambient illumination
+- Apply consistent color temperature and maintain original image's color palette
+- Ensure seamless blending with no visible transition lines or editing artifacts
+- Create natural depth, perspective, and dimensional accuracy throughout
+- Maintain professional ${options?.style || 'natural'} styling approach
+
+👤 STEP 5 - IDENTITY PRESERVATION (CRITICAL PRIORITY):
+- Maintain EXACT facial features, bone structure, skin tone, and unique characteristics
+- Keep identical body pose, stance, arm/leg positioning, and natural proportions  
+- Preserve original background ${options?.preserveBackground !== false ? 'perfectly without any changes' : 'or enhance subtly if needed'}
+- Honor camera angle, perspective, and original photographic composition
+- Maintain individual beauty marks, tattoos, and distinctive physical traits
+
+🔍 STEP 6 - MATERIAL AUTHENTICITY:`;
+
+    // Add material-specific instructions if available
+    const enhancedItemInfo = {
+        ...itemInfo,
+        material: detectMaterial(itemInfo.name),
+        fit: detectFit(itemInfo.name),
+        occasion: detectOccasion(itemInfo.name),
+    } as EnhancedItemInfo;
+
+    if (enhancedItemInfo.material) {
+        const materialBehaviors = {
+            cotton: "Apply soft, breathable characteristics with natural draping and comfortable appearance",
+            denim: "Show structured weave with authentic stitching, proper weight, and characteristic indigo properties",
+            silk: "Create luxurious flow with subtle sheen and elegant movement appropriate for the garment style",
+            leather: "Apply structured texture with natural creasing, appropriate reflections, and premium appearance",
+            wool: "Show textured fiber appearance with appropriate weight and seasonal warmth characteristics",
+            linen: "Apply crisp, lightweight texture with characteristic natural wrinkles and breathable appearance"
+        };
+
+        if (materialBehaviors[enhancedItemInfo.material]) {
+            prompt += `\n- ${materialBehaviors[enhancedItemInfo.material]}`;
+        }
+    }
+
+    prompt += `
+- Ensure fabric behaves according to its properties (stretch, drape, stiffness, weight)
+- Apply appropriate surface textures, reflections, and material-specific characteristics
+- Create realistic interaction between fabric and body movement/positioning
+
+✅ STEP 7 - QUALITY VALIDATION CHECKLIST:
+✓ Garment fits the person's body naturally without distortion, floating, or misalignment
+✓ All garment details (buttons, zippers, patterns, logos, seams) are clearly visible and accurate  
+✓ No unnaturally positioned fabric areas or impossible garment behavior
+✓ Lighting and shadows are consistent and realistic throughout the entire image
+✓ Person's identity, pose, and scene context remain exactly identical to the original
+✓ Material properties are authentic and behave realistically
+✓ Result appears as if the person naturally chose and wore this exact garment
+✓ Professional ${modelType === 'kid' ? 'child-appropriate' : 'fashion photography'} quality achieved
+✓ Zero visible editing artifacts or unnatural transitions
+
+EXECUTE TRANSFORMATION: Apply the garment from image 2 to the person in image 1 with complete photorealistic precision, maintaining perfect identity preservation and natural integration.`;
+
+    const input: ReplicateInput = {
+        prompt,
+        image_input: [modelImageUrl, garmentDataUrl],
+        output_format: 'png',
+    };
+
+    return runReplicatePrediction(input, options?.signal);
 };
