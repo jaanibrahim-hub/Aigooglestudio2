@@ -225,14 +225,23 @@ async function handleReplicateCreatePrediction(request, env) {
     
     const requestBody = await request.json();
     
-    // Make request to Replicate API
-    const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
+    // Extract model from request and construct the correct endpoint
+    const model = requestBody.model || 'google/nano-banana';
+    const apiUrl = `https://api.replicate.com/v1/models/${model}/predictions`;
+    
+    // Prepare request body for Replicate API (only input, no model field)
+    const replicateRequestBody = {
+      input: requestBody.input
+    };
+    
+    // Make request to Replicate API using the correct endpoint
+    const replicateResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Token ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(replicateRequestBody),
     });
     
     const responseData = await replicateResponse.json();
@@ -265,7 +274,7 @@ async function handleReplicateGetPrediction(request, env, predictionId) {
     const replicateResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Token ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
     });
     

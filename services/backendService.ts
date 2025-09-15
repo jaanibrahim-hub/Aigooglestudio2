@@ -223,14 +223,17 @@ export async function createPrediction(predictionData: PredictionRequest): Promi
  */
 async function createDirectPrediction(predictionData: PredictionRequest, apiKey: string): Promise<PredictionResponse> {
     try {
-        const response = await fetch('https://api.replicate.com/v1/predictions', {
+        // Use the correct model endpoint format
+        const model = predictionData.model || 'google/nano-banana';
+        const apiUrl = `https://api.replicate.com/v1/models/${model}/predictions`;
+        
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Token ${apiKey}`,
+                'Authorization': `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                version: predictionData.version,
                 input: predictionData.input,
             }),
         });
@@ -303,7 +306,7 @@ async function getDirectPredictionStatus(predictionId: string, apiKey: string): 
         const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
             method: 'GET',
             headers: {
-                'Authorization': `Token ${apiKey}`,
+                'Authorization': `Bearer ${apiKey}`,
             },
         });
 
