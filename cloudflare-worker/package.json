@@ -1,0 +1,17 @@
+{
+  "name": "virtual-tryon-cloudflare-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for Virtual Try-On App",
+  "main": "src/index.js",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev"
+  },
+  "keywords": ["cloudflare", "worker", "replicate", "virtual-tryon"],
+  "author": "USMANYOUSAF",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "wrangler": "^4.36.0"
+  }
+}

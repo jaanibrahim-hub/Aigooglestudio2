@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Backend API configuration - Update this URL to your deployed Cloudflare backend
-const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://virtual-tryon-backend.your-username.workers.dev/api';
+// Backend API configuration - Cloudflare Worker deployed backend
+const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://virtual-tryon-backend.kiakiaa1290.workers.dev/api';
 
 // Session management
 let sessionToken: string | null = localStorage.getItem('session_token');
