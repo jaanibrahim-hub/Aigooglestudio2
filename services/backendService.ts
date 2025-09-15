@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Backend API configuration
-const BACKEND_BASE_URL = 'https://5001-i39kfzrghbubkmyjd0sc1-6532622b.e2b.dev/api';
+// Backend API configuration - Update this URL to your deployed Cloudflare backend
+const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://virtual-tryon-backend.your-username.workers.dev/api';
 
 // Session management
 let sessionToken: string | null = localStorage.getItem('session_token');
@@ -44,6 +44,7 @@ interface PredictionResponse {
  */
 export async function initializeSession(apiKey: string): Promise<SessionData> {
     try {
+        // First try the backend API
         const response = await fetch(`${BACKEND_BASE_URL}/auth/init`, {
             method: 'POST',
             headers: {
@@ -70,8 +71,17 @@ export async function initializeSession(apiKey: string): Promise<SessionData> {
             expiresIn: data.expiresIn || '24h'
         };
     } catch (error) {
-        console.error('Session initialization error:', error);
-        throw new Error(`Failed to initialize session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Backend connection failed, falling back to direct API:', error);
+        
+        // Fallback: Store API key directly (temporary solution)
+        sessionToken = `fallback_${Date.now()}`;
+        localStorage.setItem('session_token', sessionToken);
+        localStorage.setItem('replicate_api_key_fallback', apiKey);
+        
+        return {
+            sessionToken: sessionToken,
+            expiresIn: '24h'
+        };
     }
 }
 
@@ -81,6 +91,12 @@ export async function initializeSession(apiKey: string): Promise<SessionData> {
 export async function validateSession(): Promise<boolean> {
     if (!sessionToken) {
         return false;
+    }
+
+    // For fallback mode, check if we have the API key stored
+    if (sessionToken.startsWith('fallback_')) {
+        const fallbackApiKey = localStorage.getItem('replicate_api_key_fallback');
+        return Boolean(fallbackApiKey);
     }
 
     try {
@@ -111,7 +127,15 @@ export async function validateSession(): Promise<boolean> {
         
         return isValid;
     } catch (error) {
-        console.error('Session validation error:', error);
+        console.error('Backend validation error, checking fallback mode:', error);
+        
+        // If backend validation fails, check if we can use fallback mode
+        const fallbackApiKey = localStorage.getItem('replicate_api_key_fallback');
+        if (fallbackApiKey) {
+            console.log('Using fallback mode for session validation');
+            return true;
+        }
+        
         return false;
     }
 }
@@ -152,6 +176,12 @@ export async function createPrediction(predictionData: PredictionRequest): Promi
         throw new Error('No active session. Please initialize with API key first.');
     }
 
+    // Check if we're using fallback mode (when backend is not available)
+    const fallbackApiKey = localStorage.getItem('replicate_api_key_fallback');
+    if (sessionToken.startsWith('fallback_') && fallbackApiKey) {
+        return createDirectPrediction(predictionData, fallbackApiKey);
+    }
+
     try {
         const response = await fetch(`${BACKEND_BASE_URL}/replicate/predictions`, {
             method: 'POST',
@@ -177,8 +207,43 @@ export async function createPrediction(predictionData: PredictionRequest): Promi
 
         return await response.json();
     } catch (error) {
-        console.error('Prediction creation error:', error);
+        console.error('Backend prediction creation error, trying fallback:', error);
+        
+        // Fallback to direct API if backend fails
+        if (fallbackApiKey) {
+            return createDirectPrediction(predictionData, fallbackApiKey);
+        }
+        
         throw new Error(`Failed to create prediction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+/**
+ * Direct Replicate API call (fallback when backend is not available)
+ */
+async function createDirectPrediction(predictionData: PredictionRequest, apiKey: string): Promise<PredictionResponse> {
+    try {
+        const response = await fetch('https://api.replicate.com/v1/predictions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Token ${apiKey}`,
+            },
+            body: JSON.stringify({
+                version: predictionData.version,
+                input: predictionData.input,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP ${response.status}: Failed to create prediction`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Direct Replicate API error:', error);
+        throw new Error(`Failed to create prediction via direct API: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
@@ -188,6 +253,12 @@ export async function createPrediction(predictionData: PredictionRequest): Promi
 export async function getPredictionStatus(predictionId: string): Promise<PredictionResponse> {
     if (!sessionToken) {
         throw new Error('No active session. Please initialize with API key first.');
+    }
+
+    // Check if we're using fallback mode
+    const fallbackApiKey = localStorage.getItem('replicate_api_key_fallback');
+    if (sessionToken.startsWith('fallback_') && fallbackApiKey) {
+        return getDirectPredictionStatus(predictionId, fallbackApiKey);
     }
 
     try {
@@ -213,8 +284,38 @@ export async function getPredictionStatus(predictionId: string): Promise<Predict
 
         return await response.json();
     } catch (error) {
-        console.error('Prediction status error:', error);
+        console.error('Backend prediction status error, trying fallback:', error);
+        
+        // Fallback to direct API if backend fails
+        if (fallbackApiKey) {
+            return getDirectPredictionStatus(predictionId, fallbackApiKey);
+        }
+        
         throw new Error(`Failed to get prediction status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+/**
+ * Direct Replicate API status check (fallback when backend is not available)
+ */
+async function getDirectPredictionStatus(predictionId: string, apiKey: string): Promise<PredictionResponse> {
+    try {
+        const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Token ${apiKey}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP ${response.status}: Failed to get prediction status`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Direct Replicate API status error:', error);
+        throw new Error(`Failed to get prediction status via direct API: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
