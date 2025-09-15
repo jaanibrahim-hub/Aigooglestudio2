@@ -66,15 +66,21 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                   <strong>Hey there, fashion enthusiast! 👋</strong>
                 </p>
                 <p>
-                  Welcome to VirtueWear - your AI-powered virtual closet that's about to revolutionize how you experience fashion! 
-                  Imagine being able to try on any outfit, in any style, anywhere in the world - all without leaving your home. 
-                  That's exactly what we've built for you!
+                  Welcome to <strong>VirtueWear</strong> - your AI-powered virtual closet that's about to revolutionize how you experience fashion! 
+                  Imagine being able to try on any outfit, in any style, anywhere in the world - from Tokyo street fashion to 
+                  Parisian cafe elegance - all without leaving your home. That's exactly what we've built for you!
                 </p>
                 <p>
                   <strong>🎭 The Magic Behind the Mirror:</strong><br/>
                   Using cutting-edge Google nano-banana AI technology, VirtueWear transforms your photos into a virtual runway. 
                   Upload your picture once, and watch as our AI preserves your unique identity while letting you experiment with 
-                  endless fashion possibilities across 11 specialized categories.
+                  endless fashion possibilities across <strong>11 specialized categories</strong> and <strong>500+ global locations</strong>.
+                </p>
+                <p>
+                  <strong>✨ Why VirtueWear is Different:</strong><br/>
+                  Unlike simple photo editors, VirtueWear maintains your facial features, body proportions, and natural appearance 
+                  while seamlessly integrating new clothing. It's like having a magic mirror that shows you in any outfit, 
+                  anywhere in the world!
                 </p>
               </div>
             </div>
@@ -217,16 +223,30 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             </div>
 
             {/* Call to Action */}
-            <div className="text-center p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl">
-              <p className="text-gray-700 dark:text-gray-300 mb-3">
-                Ready to revolutionize your fashion experience? 
-              </p>
-              <button
-                onClick={onClose}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
-              >
-                Start Your Fashion Journey ✨
-              </button>
+            <div className="text-center p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl border border-blue-200/30 dark:border-purple-400/30">
+              <div className="mb-4">
+                <div className="text-3xl mb-2">🚀</div>
+                <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                  Ready to Transform Your Style?
+                </h4>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                  Join thousands of fashion enthusiasts using VirtueWear to explore their style potential!
+                </p>
+              </div>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={onClose}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
+                >
+                  Start Your Fashion Journey ✨
+                </button>
+                <button
+                  onClick={() => window.open('https://linkedin.com/in/usman9999', '_blank')}
+                  className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-3 rounded-lg font-medium transition-all"
+                >
+                  Connect with Creator
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
