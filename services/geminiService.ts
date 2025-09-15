@@ -31,8 +31,9 @@ interface EnhancedItemInfo extends WardrobeItem {
 
 // --- Configuration ---
 const NANO_BANANA_CONFIG = {
-    model: "google/nano-banana", // Use model path instead of version
-    maxImages: 4,
+    model: "fal-ai/nano-banana", // Updated model path
+    version: "4e6cca0cb5484a3a827c9bb1ba61ed9a4f5b5bfe892090dba46897da91875928", // Nano-banana version
+    maxImages: 6, // Nano-banana supports up to 6 images
     supportedFormats: ['jpg', 'png', 'webp'],
     maxFileSize: 10 * 1024 * 1024, // 10MB
 };
@@ -114,7 +115,7 @@ const runReplicatePrediction = async (input: ReplicateInput, signal?: AbortSigna
         
         // Create prediction through our secure backend
         const prediction = await createPrediction({
-            model: NANO_BANANA_CONFIG.model,
+            version: NANO_BANANA_CONFIG.version,
             input: validatedInput
         });
 
